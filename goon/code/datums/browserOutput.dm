@@ -12,6 +12,7 @@ For the main html chat area
 	"goon/browserassets/css/fonts/fontawesome-webfont.woff",
 	"goon/browserassets/css/font-awesome.css",
 	"goon/browserassets/css/browserOutput.css",
+	"goon/browserassets/css/browserOutput_dark.css",
 	"goon/browserassets/css/browserOutput_colorblindv1.css"
 )
 
@@ -97,6 +98,29 @@ For the main html chat area
 
 		if("analyzeClientData")
 			data = analyzeClientData(arglist(params))
+
+		if("encoding")
+			var/encoding = href_list["encoding"]
+			var/static/regex/RE = regex("windows-(874|125\[0-8])")
+			if (RE.Find(encoding))
+				owner.encoding = RE.group[1]
+
+			else if (encoding == "gb2312")
+				owner.encoding = "2312"
+
+			// This seems to be the result on Japanese locales, but the client still seems to accept 1252.
+			else if (encoding == "_autodetect")
+				owner.encoding = "1252"
+
+			else
+				stack_trace("Unknown encoding received from client: \"[sanitize(encoding)]\". Please report this as a bug.")
+
+		if("colorPresetPost") //User just swapped color presets in their goonchat preferences. Do we do anything else?
+			switch(href_list["preset"])
+				if("normal","colorblindv1")
+					owner.white_theme()
+				if("dark")
+					owner.dark_theme()
 
 	if(data)
 		ehjax_send(data = data)

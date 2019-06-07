@@ -28,7 +28,7 @@
 /obj/item/mecha_parts/mecha_equipment/tool/sleeper/allow_drop()
 	return 0
 
-/obj/item/mecha_parts/mecha_equipment/tool/sleeper/destroy()
+/obj/item/mecha_parts/mecha_equipment/tool/sleeper/Destroy()
 	for(var/atom/movable/AM in src)
 		AM.forceMove(get_turf(src))
 	return ..()
@@ -73,7 +73,7 @@
 		*/
 		set_ready_state(0)
 		pr_mech_sleeper.start()
-		occupant_message("<font color='blue'>[target] successfully loaded into [src]. Life support functions engaged.</font>")
+		occupant_message("<span class='notice'>[target] successfully loaded into [src]. Life support functions engaged.</span>")
 		chassis.visible_message("[chassis] loads [target] into [src].")
 		log_message("[target] loaded. Life support functions engaged.")
 	return
@@ -274,7 +274,7 @@
 	chassis.on_moved.Remove(chassis_on_moved_key)
 	return ..()
 
-/obj/item/mecha_parts/mecha_equipment/tool/cable_layer/destroy()
+/obj/item/mecha_parts/mecha_equipment/tool/cable_layer/Destroy()
 	chassis.on_moved.Remove(chassis_on_moved_key)
 	return ..()
 
@@ -284,7 +284,7 @@
 	var/result = load_cable(target)
 	var/message
 	if(isnull(result))
-		message = "<font color='red'>Unable to load [target] - no cable found.</font>"
+		message = "<span class='red'>Unable to load [target] - no cable found.</span>"
 	else if(!result)
 		message = "Reel is full."
 	else

@@ -1,6 +1,6 @@
 /obj/structure/grille
 	name = "grille"
-	desc = "A matrice of metal rods, usually used as a support for window bays, with screws to secure it to the floor."
+	desc = "A matrix of metal rods, usually used as a support for window bays, with screws to secure it to the floor."
 	icon = 'icons/obj/structures.dmi'
 	icon_state = "grille"
 	density = 1
@@ -34,7 +34,7 @@
 		icon_state = "[initial(icon_state)]-b"
 		setDensity(FALSE) //Not blocking anything anymore
 		new grille_material(get_turf(src)) //One rod set
-	else if(health >= (0.25*initial(health)) && broken) //Repair the damage to this bitch
+	else if(health > (0.25*initial(health)) && broken) //Repair the damage to this bitch
 		broken = 0
 		icon_state = initial(icon_state)
 		setDensity(TRUE)
@@ -61,6 +61,22 @@
 /obj/structure/grille/Bumped(atom/user)
 	if(ismob(user))
 		shock(user, 60) //Give the user the benifit of the doubt
+
+/obj/structure/grille/hitby(AM as mob|obj)
+	. = ..()
+	if(.)
+		return
+	if(ismob(AM))
+		var/mob/M = AM
+		health -= 10
+		healthcheck(TRUE)
+		visible_message("<span class='danger'>\The [M] slams into \the [src].</span>", \
+		"<span class='danger'>You slam into \the [src].</span>")
+	else if(isobj(AM))
+		var/obj/item/I = AM
+		health -= I.throwforce
+		healthcheck(TRUE)
+		visible_message("<span class='danger'>\The [I] slams into \the [src].</span>")
 
 /obj/structure/grille/attack_paw(mob/user as mob)
 	attack_hand(user)
@@ -142,8 +158,18 @@
 	return 0
 
 /obj/structure/grille/attackby(obj/item/weapon/W as obj, mob/user as mob)
-	visible_message("<span class='danger'>[user] hits [src] with [W].</span>")
 	user.delayNextAttack(8)
+	if(isglasssheet(W))
+		var/obj/item/stack/sheet/glass/G = W
+		for(var/datum/stack_recipe/SR in G.recipes)
+			if(ispath(SR.result_type, /obj/structure/window))
+				var/obj/structure/window/S = SR.build(user,G,1,loc)
+				if(S)
+					S.forceMove(get_turf(src))
+					S.dir = get_dir(src, user)
+					S.ini_dir = S.dir
+					return
+		return
 	if(iswirecutter(W))
 		if(!shock(user, 100, W.siemens_coefficient)) //Prevent user from doing it if he gets shocked
 			playsound(loc, 'sound/items/Wirecutter.ogg', 100, 1)
@@ -151,58 +177,13 @@
 			qdel(src)
 			return
 		return //Return in case the user starts cutting and gets shocked, so that it doesn't continue downwards !
-	else if((isscrewdriver(W)) && (istype(loc, /turf/simulated) || anchored))
+	else if((W.is_screwdriver(user)) && (istype(loc, /turf/simulated) || anchored))
 		if(!shock(user, 90, W.siemens_coefficient))
 			playsound(loc, 'sound/items/Screwdriver.ogg', 100, 1)
 			anchored = !anchored
 			user.visible_message("<span class='notice'>[user] [anchored ? "fastens" : "unfastens"] the grille [anchored ? "to" : "from"] the floor.</span>", \
 			"<span class='notice'>You [anchored ? "fasten" : "unfasten"] the grille [anchored ? "to" : "from"] the floor.</span>")
 			return
-
-//Window placement
-	else if(istype(W, /obj/item/stack/sheet/glass))
-		var/dir_to_set
-		if(loc == user.loc)
-			dir_to_set = user.dir //Whatever the user is doing, return the "normal" window placement output
-		else
-			if((x == user.x) || (y == user.y)) //Only supposed to work for cardinal directions, aka can't lay windows in diagonal directions
-				if(x == user.x) //User is on the same vertical plane
-					if(y > user.y)
-						dir_to_set = 2 //User is laying from the bottom
-					else
-						dir_to_set = 1 //User is laying from the top
-				else if(y == user.y) //User is on the same horizontal plane
-					if (x > user.x)
-						dir_to_set = 8 //User is laying from the left
-					else
-						dir_to_set = 4 //User is laying from the right
-			else
-				to_chat(user, "<span class='warning'>You can't reach far enough.</span>")
-				return
-		for(var/obj/structure/window/P in loc)
-			if(P.dir == dir_to_set)
-				to_chat(user, "<span class='warning'>There's already a window here.</span>")//You idiot
-
-				return
-		user.visible_message("<span class='notice'>[user] starts placing a window on \the [src].</span>", \
-		"<span class='notice'>You start placing a window on \the [src].</span>")
-		if(do_after(user, src, 20))
-			for(var/obj/structure/window/P in loc)
-				if(P.dir == dir_to_set)//checking this for a 2nd time to check if a window was made while we were waiting.
-					to_chat(user, "<span class='warning'>There's already a window here.</span>")
-					return
-			var/obj/item/stack/sheet/glass/glass/G = W //This fucking stacks code holy shit
-			var/obj/structure/window/WD = new G.created_window(loc, 0)
-			WD.dir = dir_to_set
-			WD.ini_dir = dir_to_set
-			WD.anchored = 0
-			WD.d_state = 0
-			var/obj/item/stack/ST = W //HOLY FUCKING SHIT !
-			ST.use(1)
-			user.visible_message("<span class='notice'>[user] places \a [WD] on \the [src].</span>", \
-			"<span class='notice'>You place \a [WD] on \the [src].</span>")
-		return
-
 	var/dam = 0
 	if(istype(W, /obj/item/weapon/fireaxe)) //Fireaxes instantly kill grilles
 		dam = health
@@ -220,11 +201,10 @@
 
 	if(dam)
 		user.do_attack_animation(src, W)
+		visible_message("<span class='danger'>[user] hits [src] with [W].</span>")
 	health -= dam
 	healthcheck(hitsound = 1)
 	..()
-	return
-
 //Shock user with probability prb (if all connections & power are working)
 //Returns 1 if shocked, 0 otherwise
 
@@ -264,6 +244,16 @@
 
 	reset_vars_after_duration(resettable_vars, duration)
 
+/obj/structure/grille/AltClick(var/mob/user)
+	. = ..()
+	var/turf/T = loc
+	if (istype(T))
+		if (user.listed_turf == T)
+			user.listed_turf = null
+		else
+			user.listed_turf = T
+			user.client.statpanel = T.name
+
 //Mapping entities and alternatives !
 
 /obj/structure/grille/broken //THIS IS ONLY TO BE USED FOR MAPPING, THANK YOU FOR YOUR UNDERSTANDING
@@ -288,14 +278,14 @@
 /obj/structure/grille/cult //Used to get rid of those ugly fucking walls everywhere while still blocking air
 
 	name = "cult grille"
-	desc = "A matrice built out of an unknown material, with some sort of force field blocking air around it"
+	desc = "A matrix built out of an unknown material, with some sort of force field blocking air around it"
 	icon_state = "grillecult"
 	health = 40 //Make it strong enough to avoid people breaking in too easily
 
 /obj/structure/grille/cult/Cross(atom/movable/mover, turf/target, height = 1.5, air_group = 0)
 	if(air_group || !broken)
 		return 0 //Make sure air doesn't drain
-	..()
+	return ..()
 
 
 /obj/structure/grille/invulnerable

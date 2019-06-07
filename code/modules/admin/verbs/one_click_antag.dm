@@ -17,9 +17,8 @@ client/proc/one_click_antag()
 		<a href='?src=\ref[src];makeAntag=4'>Make Cult</a><br>
 		<a href='?src=\ref[src];makeAntag=5'>Make Malf AI</a><br>
 		<a href='?src=\ref[src];makeAntag=6'>Make Wizard (Requires Ghosts)</a><br>
-		<a href='?src=\ref[src];makeAntag=7'>Make Nuke Team (Requires Ghosts)</a><br>
-		<a href='?src=\ref[src];makeAntag=8'>Make Vampires</a><br>
-		<a href='?src=\ref[src];makeAntag=9'>Make Aliens (Requires Ghosts)</a><br>
+		<a href='?src=\ref[src];makeAntag=7'>Make Vampires</a><br>
+		<a href='?src=\ref[src];makeAntag=8'>Make Aliens (Requires Ghosts)</a><br>
 		"}
 
 	usr << browse(dat, "window=oneclickantag;size=400x400")
@@ -60,7 +59,6 @@ client/proc/one_click_antag()
 	var/list/candidates = get_candidates(role_req, recruitment_source, role_name)
 	var/recruit_count = 0
 	if(!candidates.len)
-		to_chat(usr, "No candidates")
 		return 0
 
 	candidates = shuffle(candidates)
@@ -78,8 +76,9 @@ client/proc/one_click_antag()
 			var/datum/mind/M = H.mind
 			if(FF.HandleNewMind(M))
 				var/datum/role/RR = FF.get_member_by_mind(M)
-				RR.ForgeObjectives()
-				log_admin("[key_name(H)] has been recruited as leader of [F.name] via create antagonist verb.")
+				RR.OnPostSetup()
+				RR.Greet(GREET_LATEJOIN)
+				message_admins("[key_name(H)] has been recruited as leader of [FF.name] via create antagonist verb.")
 				recruit_count++
 				count--
 
@@ -87,16 +86,21 @@ client/proc/one_click_antag()
 			count--
 			var/mob/living/carbon/human/H = pick(candidates)
 			candidates.Remove(H)
+			if (initial(F.initial_role) in H.mind.antag_roles) // Ex: a head rev being made a revolutionary.
+				continue
 			if(isobserver(H))
 				H = makeBody(H)
 			var/datum/mind/M = H.mind
+			message_admins("polling if [key_name(H)] wants to become a member of [FF.name]")
 			if(FF.HandleRecruitedMind(M))
 				var/datum/role/RR = FF.get_member_by_mind(M)
-				RR.ForgeObjectives()
-				log_admin("[key_name(H)] has been recruited as recruit of [F.name] via create antagonist verb.")
+				RR.OnPostSetup()
+				RR.Greet(GREET_LATEJOIN)
+				message_admins("[key_name(H)] has been recruited as recruit of [F.name] via create antagonist verb.")
 				recruit_count++
 
 		FF.OnPostSetup()
+		FF.forgeObjectives()
 
 		return recruit_count
 
@@ -108,9 +112,10 @@ client/proc/one_click_antag()
 			if(isobserver(H))
 				H = makeBody(H)
 			var/datum/mind/M = H.mind
-
+			if(M.GetRole(initial(R.id)))
+				continue
 			var/datum/role/newRole = new R
-
+			message_admins("polling if [key_name(H)] wants to become a [newRole.name]")
 			if(!newRole)
 				continue
 
@@ -119,7 +124,8 @@ client/proc/one_click_antag()
 				continue
 			newRole.OnPostSetup()
 			newRole.ForgeObjectives()
-			log_admin("[key_name(H)] has been made into a [newRole.name] via create antagonist verb.")
+			newRole.Greet(GREET_LATEJOIN)
+			message_admins("[key_name(H)] has been made into a [newRole.name] via create antagonist verb.")
 			recruit_count++
 
 	return recruit_count
@@ -137,10 +143,11 @@ client/proc/one_click_antag()
 					continue
 				candidates.Add(H)
 	for(var/mob/M in candidates)
-		if(jobban_isbanned(M, "Syndicate"))
+		if(isantagbanned(M))
 			candidates.Remove(M)
 		if(!M.client.desires_role(role) || jobban_isbanned(M, role))
 			candidates.Remove(M)
+	message_admins("[candidates.len] potential candidates.")
 	return candidates
 
 
@@ -158,8 +165,8 @@ client/proc/one_click_antag()
 	var/syndicate_leader_selected = 0 //when the leader is chosen. The last person spawned.
 
 	//Generates a list of commandos from active ghosts. Then the user picks which characters to respawn as the commandos.
-	for(var/mob/dead/observer/G in get_active_candidates(ROLE_COMMANDO, poll="Do you wish to be considered for an elite syndicate strike team being sent in?"))
-		if(!jobban_isbanned(G, "operative") && !jobban_isbanned(G, "Syndicate"))
+	for(var/mob/dead/observer/G in get_active_candidates(ROLE_STRIKE, poll="Do you wish to be considered for an elite syndicate strike team being sent in?"))
+		if(!jobban_isbanned(G, "operative") && !isantagbanned(G))
 			candidates += G
 
 	for(var/mob/dead/observer/G in candidates)
@@ -215,8 +222,7 @@ client/proc/one_click_antag()
 
 	new_character.gender = pick(MALE,FEMALE)
 
-	var/datum/preferences/A = new()
-	A.randomize_appearance_for(new_character)
+	new_character.randomise_appearance_for(new_character.gender)
 	new_character.generate_name()
 	new_character.age = rand(17,45)
 
@@ -233,8 +239,7 @@ client/proc/one_click_antag()
 
 	new_syndicate_commando.gender = pick(MALE, FEMALE)
 
-	var/datum/preferences/A = new()//Randomize appearance for the commando.
-	A.randomize_appearance_for(new_syndicate_commando)
+	new_syndicate_commando.randomise_appearance_for(new_syndicate_commando.gender)
 
 	new_syndicate_commando.real_name = "[!syndicate_leader_selected ? syndicate_commando_rank : syndicate_commando_leader_rank] [syndicate_commando_name]"
 	new_syndicate_commando.name = new_syndicate_commando.real_name
@@ -259,7 +264,7 @@ client/proc/one_click_antag()
 	var/mob/living/carbon/human/new_vox = new(spawn_location.loc)
 
 	new_vox.setGender(pick(MALE, FEMALE))
-	new_vox.h_style = "Short Vox Quills"
+	new_vox.my_appearance.h_style = "Short Vox Quills"
 	new_vox.regenerate_icons()
 
 	new_vox.age = rand(12,20)

@@ -205,6 +205,9 @@
 			for(var/obj/item/weapon/cell/C in A.contents)
 				if(C.percent() < 30)
 					score["powerloss"]++ //Enough to auto-cut equipment, so alarm
+	for(var/datum/powernet/PN in powernets)
+		if(PN.avail > score["maxpower"])
+			score["maxpower"] = PN.avail
 
 	var/roundlength = world.time/10 //Get a value in seconds
 	score["time"] = round(roundlength) //One point for every five seconds. One minute is 12 points, one hour 720 points
@@ -220,6 +223,10 @@
 		if(T.z != map.zMainStation) //Won't work on multi-Z stations, but will do for now
 			continue
 		score["litter"]++
+
+	for(var/mob/living/simple_animal/SA in dead_mob_list)
+		if(SA.is_pet)
+			score["deadpets"]++
 
 	//Bonus Modifiers
 	//var/traitorwins = score["traitorswon"]
@@ -466,12 +473,28 @@
 		dat += "<B>Station Profit:</B> +[num2text(profit,50)]<BR>"
 	else if (profit < 0)
 		dat += "<B>Station Deficit:</B> [num2text(profit,50)]<BR>"}*/
-	dat += {"<B>Food Eaten:</b> [score["foodeaten"]]<BR>
-	<B>Times a Clown was Abused:</B> [score["clownabuse"]]<BR>
-	<B>Number of Times Someone was Slipped: </B> [score["slips"]]<BR>
-	<B>Number of Explosions This Shift:</B> [score["explosions"]]<BR>
-	<B>Number of Arena Rounds:</B> [score["arenafights"]]<BR>
-	<B>Total money transferred:</B> [score["totaltransfer"]]<BR>"}
+	dat += "<B>Food Eaten:</b> [score["foodeaten"]]<BR>"
+	dat += "<B>Times a Clown was Abused:</B> [score["clownabuse"]]<BR>"
+	dat += "<B>Number of Times Someone was Slipped: </B> [score["slips"]]<BR>"
+	dat += "<B>Number of Explosions This Shift:</B> [score["explosions"]]<BR>"
+	dat += "<B>Number of Arena Rounds:</B> [score["arenafights"]]<BR>"
+	dat += "<B>Total money transferred:</B> [score["totaltransfer"]]<BR>"
+	if(score["dimensionalpushes"] > 0)
+		dat += "<B>Dimensional Pushes:</B> [score["dimensionalpushes"]]<BR>"
+	if(score["assesblasted"] > 0)
+		dat += "<B>Asses Blasted:</B> [score["assesblasted"]]<BR>"
+	if(score["shoesnatches"] > 0)
+		dat += "<B>Pairs of Shoes Snatched:</B> [score["shoesnatches"]]<BR>"
+	if(score["buttbotfarts"] > 0)
+		dat += "<B>Buttbot Farts:</B> [score["buttbotfarts"]]<BR>"
+	if(score["shardstouched"] > 0)
+		dat += "<B>Number of Times the Crew went Shard to Shard:</B> [score["shardstouched"]]<BR>"
+	if(score["lawchanges"] > 0)
+		dat += "<B>Law Upload Modules Used:</B> [score["lawchanges"]]<BR>"
+	if(score["gunsspawned"] > 0)
+		dat += "<B>Guns Magically Spawned:</B> [score["gunsspawned"]]<BR>"
+	if(score["nukedefuse"] < 30)
+		dat += "<B>Seconds Left on the Nuke When It Was Defused:</B> [score["nukedefuse"]]<BR>"
 
 	//Vault and away mission specific scoreboard elements
 	//The process_scoreboard() proc returns a list of strings associated with their score value (the number that's added to the total score)

@@ -76,7 +76,6 @@ var/list/shop_prices = list( //Cost in space credits
 /obj/item/device/assembly_frame = 50,
 
 /obj/item/device/camera = 30,
-/obj/item/device/camera/big_photos = 300,
 
 /obj/item/device/flash = 20,
 /obj/item/device/flash/synthetic = 1,
@@ -110,8 +109,8 @@ var/list/shop_prices = list( //Cost in space credits
 /obj/item/clothing/accessory/medal/gold/captain = 1500,
 /obj/item/device/radio/headset/headset_earmuffs = 125,
 /obj/item/device/detective_scanner = 200,
-/obj/item/device/mass_spectrometer/adv = 150,
-/obj/item/device/mass_spectrometer = 100,
+/obj/item/device/reagent_scanner/adv = 150,
+/obj/item/device/reagent_scanner = 100,
 /obj/item/device/mining_scanner = 15,
 /obj/item/device/mobcapsule = 200,
 /obj/item/weapon/solder = 10,

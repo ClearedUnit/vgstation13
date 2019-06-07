@@ -7,6 +7,7 @@
 	icon = 'icons/obj/weapons.dmi'
 	var/plantname
 	var/potency = 1
+	var/fragrance = null
 
 /obj/item/weapon/grown/New()
 
@@ -90,6 +91,7 @@
 	w_class = W_CLASS_TINY
 	throw_speed = 1
 	throw_range = 3
+	fragrance = INCENSE_SUNFLOWERS
 
 /obj/item/weapon/grown/sunflower/attack(mob/M as mob, mob/user as mob)
 	to_chat(M, "<font color='green'><b> [user] smacks you with a sunflower! </font><font color='yellow'><b>FLOWER POWER<b></font>")
@@ -111,6 +113,7 @@
 	throw_speed = 1
 	throw_range = 3
 	attack_verb = list("sears", "heats", "whacks", "steams")
+	fragrance = INCENSE_NOVAFLOWERS
 
 /obj/item/weapon/grown/novaflower/New()
 	..()
@@ -261,3 +264,30 @@
 		user.drop_item(src, force_drop = 1)
 		qdel(src)
 		return
+
+/obj/item/weapon/carnivorous_pumpkin
+	name = "carnivorous pumpkin"
+	desc = "It hungers. For heads."
+	icon = 'icons/obj/clothing/hats.dmi'
+	icon_state = "hardhat1_pumpkin"
+	cant_drop = 1
+
+/obj/item/weapon/carnivorous_pumpkin/New()
+	..()
+	spawn(rand(40 SECONDS, 90 SECONDS))
+		if(gcDestroyed)
+			return
+		var/mob/living/carbon/human/H = loc
+		if(istype(H))
+			var/datum/organ/external/head/head_organ = H.get_organ(LIMB_HEAD)
+			if(head_organ)
+				head_organ.explode()
+		visible_message("<span class = 'warning'>\The [src] laughs, before disappearing from view.</span>")
+		qdel(src)
+
+/obj/item/weapon/carnivorous_pumpkin/attack(mob/living/carbon/M, mob/living/carbon/user)
+	if(ishuman(M) && M != user)
+		user.drop_item(src, force_drop = 1)
+		M.drop_item(M.get_active_hand(), force_drop = 1)
+		M.put_in_hands(src)
+		to_chat(M, "<span class = 'userwarning'>\The [src] has been forced onto you by \the [user]! Find somebody else to give it to before it consumes your head!</span>")

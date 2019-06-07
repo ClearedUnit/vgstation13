@@ -84,11 +84,11 @@
 	var/skin = null //Same as medbot, set to tox or ointment for the respective kits.
 	w_class = W_CLASS_MEDIUM
 
-	New()
-		..()
-		spawn(5)
-			if(skin)
-				overlays += image('icons/obj/aibots.dmi', "kit_skin_[skin]")
+/obj/item/weapon/firstaid_arm_assembly/New()
+	..()
+	spawn(5)
+		if(skin)
+			overlays += image('icons/obj/aibots.dmi', "kit_skin_[skin]")
 
 
 /obj/machinery/bot/medbot/New()
@@ -257,7 +257,7 @@
 
 	else
 		. = ..()
-		if (.)
+		if (. && isturf(loc))
 			step_away(src,user)
 
 /obj/machinery/bot/medbot/Emag(mob/user as mob)
@@ -367,7 +367,7 @@
 				last_found = world.time
 		return
 
-	if(path.len > 0 && patient)
+	if(path.len > 0 && patient && isturf(loc))
 		step_to(src, path[1])
 		path -= path[1]
 		spawn(3)
@@ -727,6 +727,8 @@
 	if(!on)
 		return
 	if(!..())
+		return
+	if(!isturf(loc))
 		return
 	step(src, dir)
 

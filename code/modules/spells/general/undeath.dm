@@ -29,7 +29,7 @@
 		to_chat(user, "<span class='warning'>You need to be dead to do that. Well, you're already dead; undead to be precise, but you need to be DEAD dead to use it.</span>")
 		return FALSE
 	if(user.on_fire || V && V.smitecounter)
-		to_chat(user, "span class='warning'>Your corpse has been sanctified!</span>")
+		to_chat(user, "<span class='warning'>Your corpse has been sanctified!</span>")
 		return FALSE
 
 /spell/undeath/choose_targets(var/mob/user = usr)
@@ -72,7 +72,7 @@
 	var/mob/living/M = owner
 	var/datum/role/vampire/V = isvampire(M)
 	M.revive(FALSE)
-	V.remove_blood(V.blood_usable)
+	V.remove_blood(V.blood_usable-10)
 	V.check_vampire_upgrade()
 	V.reviving = FALSE
 	to_chat(M, "<span class='sinister'>You awaken, ready to strike fear into the hearts of mortals once again.</span>")

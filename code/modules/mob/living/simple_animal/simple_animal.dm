@@ -24,6 +24,8 @@ var/global/list/animal_count = list() //Stores types, and amount of animals of t
 	var/speak_chance = 0
 	var/list/emote_hear = list()	//Hearable emotes
 	var/list/emote_see = list()		//Unlike speak_emote, the list of things in this variable only show by themselves with no spoken text. IE: Ian barks, Ian yaps
+	var/list/emote_sound = list()   //Plays a random sound if the mob triggers speak or emote_hear
+	var/last_speech_time = 0 //When did they last talk?
 
 	var/speak_override = FALSE
 
@@ -72,7 +74,7 @@ var/global/list/animal_count = list() //Stores types, and amount of animals of t
 	var/melee_damage_type = BRUTE
 	var/attacktext = "attacks"
 	var/attack_sound = null
-	var/friendly = "nuzzles" //If the mob does no damage with it's attack
+	var/friendly = "nuzzles" //If the mob does no damage with its attack
 //	var/environment_smash = 0 //Set to 1 to allow breaking of crates,lockers,racks,tables; 2 for walls; 3 for Rwalls
 	var/environment_smash_flags = 0
 
@@ -99,6 +101,9 @@ var/global/list/animal_count = list() //Stores types, and amount of animals of t
 
 	var/life_tick = 0
 	var/list/colourmatrix = list()
+	var/colour //Used for retaining color in breeding.
+
+	var/is_pet = FALSE //We're somebody's precious, precious pet.
 
 /mob/living/simple_animal/apply_beam_damage(var/obj/effect/beam/B)
 	var/lastcheck=last_beamchecks["\ref[B]"]
@@ -319,10 +324,13 @@ var/global/list/animal_count = list() //Stores types, and amount of animals of t
 	if(speak_emote && speak_emote.len)
 		var/emote = pick(speak_emote)
 		if(emote)
+			if(emote_sound.len && world.time > last_speech_time + 10) //Delay before next sound
+				playsound(loc, "[pick(emote_sound)]", 80, 1)
+				last_speech_time = world.time
 			return "[emote], [text]"
 	return "says, [text]";
 
-/mob/living/simple_animal/emote(var/act, var/type, var/desc, var/auto)
+/mob/living/simple_animal/emote(var/act, var/type, var/desc, var/auto, var/message = null)
 	if(timestopped)
 		return //under effects of time magick
 	if(stat)
@@ -357,8 +365,12 @@ var/global/list/animal_count = list() //Stores types, and amount of animals of t
 			switch(mode)
 				if(1)
 					say(pick(speak))
+					if(emote_sound.len)
+						playsound(loc, "[pick(emote_sound)]", 80, 1)
 				if(2)
 					emote("me", MESSAGE_HEAR, "[pick(emote_hear)].")
+					if(emote_sound.len)
+						playsound(loc, "[pick(emote_sound)]", 80, 1)
 				if(3)
 					emote("me", MESSAGE_SEE, "[pick(emote_see)].")
 
@@ -485,7 +497,7 @@ var/global/list/animal_count = list() //Stores types, and amount of animals of t
 				return 1
 	else if (user.is_pacified(VIOLENCE_DEFAULT,src))
 		return
-	if(supernatural && istype(O,/obj/item/weapon/nullrod))
+	if(supernatural && isholyweapon(O))
 		purge = 3
 	..()
 
@@ -510,7 +522,7 @@ var/global/list/animal_count = list() //Stores types, and amount of animals of t
 		return
 
 	if(!gibbed)
-		emote("deathgasp")
+		emote("deathgasp", message = TRUE)
 
 	health = 0 // so /mob/living/simple_animal/Life() doesn't magically revive them
 	living_mob_list -= src
@@ -668,6 +680,9 @@ var/global/list/animal_count = list() //Stores types, and amount of animals of t
 		var/mob/living/simple_animal/child = new childtype(loc)
 		if(istype(child))
 			child.inherit_mind(src)
+		if(colour)
+			child.colour = colour
+			child.update_icon()
 
 	return 1
 
@@ -691,6 +706,10 @@ var/global/list/animal_count = list() //Stores types, and amount of animals of t
 	new_animal.inherit_mind(src)
 	new_animal.ckey = src.ckey
 	new_animal.key = src.key
+
+	if(colour)
+		new_animal.colour = colour
+		new_animal.update_icon()
 
 	forceMove(get_turf(src))
 	qdel(src)

@@ -64,7 +64,7 @@ var/runedec = 0 // Rune cap ?
 		to_chat(user, "You retrace your steps, carefully undoing the lines of the rune.")
 		qdel(src)
 		return
-	else if(istype(I, /obj/item/weapon/nullrod))
+	else if(isholyweapon(I))
 		to_chat(user, "<span class='notice'>You disrupt the vile magic with the deadening field of \the [I]!</span>")
 		qdel(src)
 		stat_collection.cult_runes_nulled++
@@ -157,8 +157,8 @@ var/runedec = 0 // Rune cap ?
 /obj/item/weapon/tome_legacy
 	name = "arcane tome"
 	desc = "An old, dusty tome with frayed edges and a sinister looking cover."
-	icon = 'icons/obj/cult.dmi'
-	icon_state ="tome"
+	icon = 'icons/obj/weapons.dmi'
+	icon_state ="tomeold"
 	throw_speed = 1
 	throw_range = 5
 	w_class = W_CLASS_SMALL

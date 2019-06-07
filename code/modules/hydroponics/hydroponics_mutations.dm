@@ -19,7 +19,7 @@
 
 	//Is the plant still a sapling? If so, try to mutate species, otherwise do something bad.
 	if(age < 3)
-		if(seed.mutants. && seed.mutants.len)
+		if(seed.mutants && seed.mutants.len)
 			if(prob(30))
 				mutate_species()
 				return
@@ -226,7 +226,7 @@
 			hardcap_values = list(5,  3.5, 2,  1,   0.75, 0)
 			deviation = severity * (rand(8, 12)/100) * get_ratio(severity, softcap_values, hardcap_values, seed.maturation)
 			//Deviation per 10u Mutagen before cap: 0.8-1.2
-			seed.maturation = Clamp(seed.maturation - deviation, 1, 30)
+			seed.maturation = Clamp(seed.maturation - deviation, 1.1, 30)
 			generic_mutation_message("quivers!")
 
 		if("plusstat_heat&pressure_tolerance")

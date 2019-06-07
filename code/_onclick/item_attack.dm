@@ -37,6 +37,8 @@
 // Proximity_flag is 1 if this afterattack was called on something adjacent, in your square, or on your person.
 // Click parameters is the params string from byond Click() code, see that documentation.
 /obj/item/proc/afterattack(atom/target, mob/user, proximity_flag, click_parameters)
+	if(daemon && daemon.flags & DAEMON_AFTATT)
+		daemon.afterattack(target, user, proximity_flag, click_parameters)
 	return
 
 // Overrides the weapon attack so it can attack any atoms like when we want to have an effect on an object independent of attackby
@@ -207,7 +209,7 @@ obj/item/proc/get_clamped_volume()
 				else
 					to_chat(user, "<span class='warning'>You attack [M] with [I]!</span>")
 
-
+	I.on_attack(M,user)
 	if(istype(M, /mob/living/carbon))
 		var/mob/living/carbon/C = M
 		if(originator)
@@ -239,7 +241,6 @@ obj/item/proc/get_clamped_volume()
 		. = TRUE //The attack always lands
 		M.updatehealth()
 	I.add_fingerprint(user)
-	I.on_attack(M,user)
 
 
 /obj/item/proc/on_attack(var/atom/attacked, var/mob/user)

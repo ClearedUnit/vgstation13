@@ -2,15 +2,19 @@
  -- Vampires --
  */
 
+#define MAX_BLOOD_PER_TARGET 200
+
 /datum/role/vampire
 	id = VAMPIRE
 	name = VAMPIRE
-	special_role = ROLE_VAMPIRE
+	special_role = VAMPIRE
 	disallow_job = FALSE
 	restricted_jobs = list("AI", "Cyborg", "Mobile MMI", "Security Officer", "Warden", "Detective", "Head of Security", "Captain", "Chaplain")
 	logo_state = "vampire-logo"
-	greets = list(GREET_DEFAULT,GREET_CUSTOM,GREET_ADMINTOGGLE)
-	required_pref = ROLE_VAMPIRE
+	greets = list(GREET_DEFAULT,GREET_CUSTOM,GREET_ADMINTOGGLE, GREET_MASTER)
+	required_pref = VAMPIRE
+	protected_traitor_prob = PROB_PROTECTED_RARE
+	refund_value = BASE_SOLO_REFUND
 
 	var/list/powers = list()
 	var/ismenacing = FALSE
@@ -19,12 +23,19 @@
 	var/nullified = 0
 	var/smitecounter = 0
 
+	var/list/saved_appearances = list()
+	var/datum/human_appearance/initial_appearance
+
 	var/reviving = FALSE
 	var/draining = FALSE
 	var/blood_usable = STARTING_BLOOD
 	var/blood_total = STARTING_BLOOD
 
+	var/list/feeders = list()
+
 	var/static/list/roundstart_powers = list(/datum/power/vampire/hypnotise, /datum/power/vampire/glare, /datum/power/vampire/rejuvenate)
+
+	var/list/image/cached_images = list()
 
 /datum/role/vampire/New(var/datum/mind/M, var/datum/faction/fac=null, var/new_id, var/override = FALSE)
 	..()
@@ -35,7 +46,7 @@
 	else if (istype(fac, /datum/faction/vampire))
 		vamp_fac = fac
 		vamp_fac.addMaster(src)
-	wikiroute = role_wiki[ROLE_VAMPIRE]
+	wikiroute = role_wiki[VAMPIRE]
 
 /datum/role/vampire/Greet(var/greeting,var/custom)
 	if(!greeting)
@@ -53,7 +64,7 @@
 			to_chat(antag.current, "Drink blood to gain new powers and use coffins to regenerate your body if injured.")
 			to_chat(antag.current, "You are weak to holy things and starlight.")
 			to_chat(antag.current, "Don't go into space and avoid the Chaplain, the chapel, and especially Holy Water.")
-
+			to_chat(antag.current, "You will easily recognise the wearers of holy artifacts. Your powers will stop working against them as you go stronger.")
 	to_chat(antag.current, "<span class='info'><a HREF='?src=\ref[antag.current];getwiki=[wikiroute]'>(Wiki Guide)</a></span>")
 	antag.current << sound('sound/effects/vampire_intro.ogg')
 
@@ -64,6 +75,13 @@
 	for(var/type_VP in roundstart_powers)
 		var/datum/power/vampire/VP = new type_VP
 		VP.Give(src)
+	if(faction && istype(faction, /datum/faction/vampire) && faction.leader == src)
+		var/datum/faction/vampire/V = faction
+		V.name_clan(src)
+
+	var/mob/living/carbon/human/H = antag.current
+	initial_appearance = H.my_appearance.Copy()
+	initial_appearance.name = H.real_name
 
 /datum/role/vampire/RemoveFromRole(var/datum/mind/M)
 	var/list/vamp_spells = getAllVampSpells()
@@ -78,10 +96,14 @@
 /datum/role/vampire/AdminPanelEntry(var/show_logo = FALSE,var/datum/admins/A)
 	var/icon/logo = icon('icons/logos.dmi', logo_state)
 	var/mob/M = antag.current
-	var/text = {"[show_logo ? "<img src='data:image/png;base64,[icon2base64(logo)]' style='position: relative; top: 10;'/> " : "" ]
-[name] <a href='?_src_=holder;adminplayeropts=\ref[M]'>[M.real_name]/[M.key]</a>[M.client ? "" : " <i> - (logged out)</i>"][M.stat == DEAD ? " <b><font color=red> - (DEAD)</font></b>" : ""]
+	var/text
+	if (!M) // Body destroyed
+		text = "[antag.name]/[antag.key] (BODY DESTROYED)"
+	else
+		text = {"[show_logo ? "<img src='data:image/png;base64,[icon2base64(logo)]' style='position: relative; top: 10;'/> " : "" ]
+[name] <a href='?_src_=holder;adminplayeropts=\ref[M]'>[key_name(M)]</a>[M.client ? "" : " <i> - (logged out)</i>"][M.stat == DEAD ? " <b><font color=red> - (DEAD)</font></b>" : ""]
  - <a href='?src=\ref[usr];priv_msg=\ref[M]'>(priv msg)</a>
- - <a href='?_src_=holder;traitor=\ref[M]'>(role panel)</a> - <a href='?src=\ref[src]&mind=\ref[antag]&giveblood=1'>Give blood</a> <br/>"}
+ - <a href='?_src_=holder;traitor=\ref[M]'>(role panel)</a> - <a href='?src=\ref[src]&mind=\ref[antag]&giveblood=1'>Give blood</a>"}
 	return text
 
 /datum/role/vampire/RoleTopic(href, href_list, var/datum/mind/M, var/admin_auth)
@@ -102,17 +124,17 @@
 // -- Not sure if this is meant to work like that.
 // I just put what I expect to see in the "The vampires were..."
 /datum/role/vampire/GetScoreboard()
-	. = ..() // Who he was, his objectives...
-	. += "Total blood collected: <b>[blood_total]</b><br/>"
-	for (var/datum/role/thrall/T in faction.members)
-		. += T.GetScoreboard()
-		. += "<br/>"
+	. = "Total blood collected: <b>[blood_total]</b><br/>"
+	. += ..() // Who he was, his objectives...
 
 /datum/role/vampire/ForgeObjectives()
+	if(!SOLO_ANTAG_OBJECTIVES)
+		AppendObjective(/datum/objective/freeform/vampire)
+		return
 
 	AppendObjective(/datum/objective/acquire_blood)
 
-	AppendObjective(/datum/objective/target/assassinate)
+	AppendObjective(/datum/objective/target/delayed/assassinate)
 
 	AppendObjective(/datum/objective/target/steal)
 
@@ -151,7 +173,7 @@
 	draining = target
 
 	var/mob/assailant = antag.current
-
+	var/targetref = "\ref[target]"
 	var/blood = 0
 	var/blood_total_before = blood_total
 	var/blood_usable_before = blood_usable
@@ -182,18 +204,29 @@
 		if(!target.vessel.get_reagent_amount(BLOOD))
 			to_chat(assailant, "<span class='warning'>They've got no blood left to give.</span>")
 			break
+		if (!(targetref in feeders))
+			feeders[targetref] = 0
 		if(target.stat < DEAD) //alive
-			blood = min(10, target.vessel.get_reagent_amount(BLOOD)) // if they have less than 10 blood, give them the remnant else they get 10 blood
-			blood_total += blood
+			blood = min(20, target.vessel.get_reagent_amount(BLOOD)) // if they have less than 20 blood, give them the remnant else they get 20 blood
+			if (feeders[targetref] < MAX_BLOOD_PER_TARGET)
+				blood_total += blood
+			else
+				to_chat(assailant, "<span class='warning'>Their blood quenches your thirst but won't let you become any stronger. You need to find new prey.</span>")
 			blood_usable += blood
-			target.adjustCloneLoss(10) // beep boop 10 damage
+			target.adjustBruteLoss(1)
+			var/datum/organ/external/head/head_organ = target.get_organ(LIMB_HEAD)
+			head_organ.add_autopsy_data("sharp teeth", 1)
 		else
-			blood = min(5, target.vessel.get_reagent_amount(BLOOD)) // The dead only give 5 bloods
-			blood_total += blood
+			blood = min(10, target.vessel.get_reagent_amount(BLOOD)) // The dead only give 10 blood
+			if (feeders[targetref] < MAX_BLOOD_PER_TARGET)
+				blood_total += blood
+			else
+				to_chat(assailant, "<span class='warning'>Their blood quenches your thirst but won't let you become any stronger. You need to find new prey.</span>")
+		feeders[targetref] += blood
 		if(blood_total_before != blood_total)
 			to_chat(assailant, "<span class='notice'>You have accumulated [blood_total] [blood_total > 1 ? "units" : "unit"] of blood[blood_usable_before != blood_usable ?", and have [blood_usable] left to use." : "."]</span>")
 		check_vampire_upgrade()
-		target.vessel.remove_reagent(BLOOD,25)
+		target.vessel.remove_reagent(BLOOD,30)
 		update_vamp_hud()
 
 	draining = null
@@ -223,15 +256,16 @@
 		H.change_sight(adding = SEE_MOBS)
 
 
-/datum/role/vampire/proc/handle_enthrall(var/datum/mind/M)
-	if (!istype(M))
+/datum/role/vampire/proc/handle_enthrall(var/datum/mind/enthralled)
+	if (!istype(enthralled))
 		return FALSE
-	return new/datum/role/thrall(thrall = M, master = src) // Creating a new thrall
+	return new/datum/role/thrall(M = enthralled, fac = src.faction, master = src) // Creating a new thrall
 /*
 -- Life() related procs --
 */
 
 /datum/role/vampire/process()
+	..()
 	var/mob/living/carbon/human/H = antag.current
 	if (!istype(H))
 		return FALSE // The life() procs only work on humans.
@@ -258,6 +292,8 @@
 
 /datum/role/vampire/proc/handle_cloak(var/mob/living/carbon/human/H)
 	var/turf/T = get_turf(H)
+	if(H.stat != DEAD)
+		iscloaking = FALSE
 	if(!iscloaking)
 		H.alphas["vampire_cloak"] = 255
 		H.color = "#FFFFFF"
@@ -275,8 +311,9 @@
 			H.alphas["vampire_cloak"] = round((255 * 0.80))
 
 /datum/role/vampire/proc/handle_menace(var/mob/living/carbon/human/H)
+	if(H.stat == DEAD)
+		ismenacing = FALSE
 	if(!ismenacing)
-		ismenacing = 0 // ? Probably not necessary
 		return FALSE
 
 	var/turf/T = get_turf(H)
@@ -291,7 +328,10 @@
 	for(var/mob/living/carbon/C in oviewers(radius, M))
 		if(prob(35))
 			continue //to prevent fearspam
-		if(!C.vampire_affected(antag))
+		var/datum/role/thrall/role_thrall = isthrall(C)
+		if (role_thrall && role_thrall.master == src)
+			continue // We don't terrify our underlings
+		if (C.vampire_affected(antag) < 0)
 			continue
 		C.stuttering += 20
 		C.Jitter(20)
@@ -306,7 +346,7 @@
 		if(prob(35))
 			to_chat(H, "<span class='danger'>This ground is blessed. Get away, or splatter it with blood to make it safe for you.</span>")
 
-	if(!(VAMP_MATURE in powers) && (istype(get_area(H), /area/chapel))) //stay out of the chapel unless you want to turn into a pile of ashes
+	if((VAMP_MATURE in powers) && (istype(get_area(H), /area/chapel))) //stay out of the chapel unless you want to turn into a pile of ashes
 		nullified = max(5, nullified + 2)
 		if(prob(35))
 			to_chat(H, "<span class='sinister'>You feel yourself growing weaker.</span>")
@@ -316,20 +356,25 @@
 		*/
 
 	if(!nullified) //Checks to see if you can benefit from your vamp powers here
-		if(VAMP_MATURE in powers)
+		if(!(VAMP_MATURE in powers))
 			smitetemp -= 1
-		if(VAMP_SHADOW in powers)
+		if(!(VAMP_SHADOW in powers))
 			var/turf/T = get_turf(H)
 			if((T.get_lumcount() * 10) < 2)
 				smitetemp -= 1
 
-		if(VAMP_UNDYING in powers)
+		if(!(VAMP_UNDYING in powers))
 			smitetemp -= 1
 
 	if(smitetemp <= 0) //if you weren't smote by the tile you're on, remove a little holy
 		smitetemp = -1
 
 	smitecounter = max(0, (smitecounter + smitetemp))
+
+	// At any rate
+	if (smitecounter && H.real_name != initial_appearance.name)
+		H.switch_appearance(initial_appearance) // Reveal us as who we are
+		H.real_name = initial_appearance.name
 
 	switch(smitecounter)
 		if(1 to 30) //just dizziness
@@ -375,7 +420,7 @@
 	blood_usable = max(0, blood_usable - amount)
 	update_vamp_hud()
 
-/datum/role/vampire/handle_mind_transfer(var/mob/living/new_character)
+/datum/role/vampire/PostMindTransfer(var/mob/living/new_character, var/mob/living/old_character)
 	. = ..()
 	powers.Cut()
 	if (issilicon(new_character) || isbrain(new_character)) // No, borgs shouldn't be able to spawn bats
@@ -384,6 +429,68 @@
 		logo_state = initial(logo_state)
 		check_vampire_upgrade()
 
+/datum/role/vampire/handle_reagent(var/reagent_id)
+	switch(reagent_id)
+		if (HOLYWATER,INCENSE_HAREBELLS)
+			var/mob/living/carbon/human/H = antag.current
+			if (!istype(H))
+				return
+			if(VAMP_MATURE in powers)
+				to_chat(H, "<span class='danger'>A freezing liquid permeates your bloodstream. Your vampiric powers fade and your insides burn.</span>")
+				H.take_organ_damage(0, 5) //FIRE, MAGIC FIRE THAT BURNS ROBOTIC LIMBS TOO!
+				smitecounter += 10 //50 units to catch on fire. Generally you'll get fucked up quickly
+			else
+				to_chat(H, "<span class='warning'>A freezing liquid permeates your bloodstream. You're still too human to be smited!</span>")
+				smitecounter += 2 //Basically nothing, unless you drank multiple bottles of holy water (250 units to catch on fire !)
+
+/*
+	Commented out for now.
+
+/datum/role/vampire/handle_splashed_reagent(var/reagent_id)
+	switch (reagent_id)
+		if (HOLYWATER)
+			var/mob/living/carbon/human/H = antag.current
+			if (!istype(H))
+				return
+			if(!(VAMP_UNDYING in powers))
+				if(method == TOUCH)
+					if(H.wear_mask)
+						to_chat(H, "<span class='warning'>Your mask protects you from the holy water!</span>")
+						return
+
+					if(H.head)
+						to_chat(H, "<span class='warning'>Your helmet protects you from the holy water!</span>")
+						return
+
+					if(H.acidable())
+						if(prob(15) && volume >= 30)
+							var/datum/organ/external/head/head_organ = H.get_organ(LIMB_HEAD)
+							if(head_organ)
+								if(!(VAMP_MATURE in powers))
+									to_chat(H, "<span class='danger'>A freezing liquid covers your face. Its melting!</span>")
+									smitecounter += 60 //Equivalent from metabolizing all this holy water normally
+									if(head_organ.take_damage(30, 0))
+										H.UpdateDamageIcon(1)
+									head_organ.disfigure("burn")
+									H.audible_scream()
+								else
+									to_chat(H, "<span class='warning'>A freezing liquid covers your face. Your vampiric powers protect you!</span>")
+									smitecounter += 12 //Ditto above
+
+						else
+							if(!(VAMP_MATURE in powers))
+								to_chat(H, "<span class='danger'>You are doused with a freezing liquid. You're melting!</span>")
+								H.take_organ_damage(min(15, volume * 2)) //Uses min() and volume to make sure they aren't being sprayed in trace amounts (1 unit != insta rape) -- Doohl
+								smitecounter += volume * 2
+							else
+								to_chat(H, "<span class='warning'>You are doused with a freezing liquid. Your vampiric powers protect you!</span>")
+								smitecounter += volume * 0.4
+				else
+					if(H.acidable())
+						H.take_organ_damage(min(15, volume * 2))
+						smitecounter += 5
+
+*/
 
 /*
 -- Helpers --
@@ -433,7 +540,7 @@
 					to_chat(src, "<span class='danger'>You continue to burn!</span>")
 				fire_stacks += 5
 				IgniteMob()
-		emote("scream",,, 1)
+		audible_scream()
 	else
 		switch(health)
 			if((-INFINITY) to 60)
@@ -445,8 +552,6 @@
  -- Thralls --
  */
 
-#define THRALL "thrall" // Should be moved somewhere else
-
 /datum/role/thrall
 	id = THRALL
 	name = "thrall"
@@ -455,14 +560,13 @@
 
 	var/datum/role/vampire/master
 
-/datum/role/thrall/New(var/datum/mind/thrall, var/datum/faction/fac=null, var/new_id, var/override = FALSE, var/datum/role/vampire/master)
+/datum/role/thrall/New(var/datum/mind/M, var/datum/faction/fac=null, var/new_id, var/override = FALSE, var/datum/role/vampire/master)
 	. = ..()
 	if(!istype(master))
 		return FALSE
 	src.master = master
-	master.faction.members += src
-	faction = master.faction
-	antag = thrall
+	message_admins("[key_name(M)] was enthralled by [key_name(master.antag)]. [formatJumpTo(get_turf(M.current))]")
+	log_admin("[key_name(M)] was enthralled by [key_name(master.antag)]. [formatJumpTo(get_turf(M.current))]")
 	update_faction_icons()
 	Greet(TRUE)
 	ForgeObjectives()
@@ -472,7 +576,7 @@
 /datum/role/thrall/Greet(var/you_are = TRUE)
 	var/dat
 	if (you_are)
-		dat = "<span class='danger'>You are a Thrall!</br> You are slaved to <b>[master.antag.current]</b>!</span>"
+		dat = "<span class='danger'>You are a Thrall!</br> You are slaved to <b>[master.antag.current]</b> [faction?"under the [faction.name].":"."]</span>"
 	dat += {""}
 	to_chat(antag.current, dat)
 	to_chat(antag.current, "<B>You must complete the following tasks:</B>")
@@ -483,10 +587,21 @@
 	P.set_target(master.antag)
 	AppendObjective(P)
 
-
 /datum/role/thrall/Drop(var/deconverted = FALSE)
 	var/mob/M = antag.current
-	M.visible_message("<span class='big danger'>[M] suddenly becomes calm and collected again, \his eyes clear up.</span>",
-	"<span class='big notice'>Your blood cools down and you are inhabited by a sensation of untold calmness.</span>")
+	message_admins("[key_name(M)] was dethralled, his master was [key_name(master.antag)]. [formatJumpTo(get_turf(antag.current))]")
+	log_admin("[key_name(M)] was dethralled, his master was [key_name(master.antag)]. [formatJumpTo(get_turf(antag.current))]")
+	if (deconverted)
+		M.visible_message("<span class='big danger'>[M] suddenly becomes calm and collected again, \his eyes clear up.</span>",
+		"<span class='big notice'>Your blood cools down and you are inhabited by a sensation of untold calmness.</span>")
 	update_faction_icons()
 	return ..()
+
+/datum/role/thrall/handle_reagent(var/reagent_id)
+	switch (reagent_id)
+		if (HOLYWATER)
+			var/mob/living/carbon/human/H = antag.current
+			if (!istype(H))
+				return
+			if (prob(35)) // 35% chance of dethralling
+				Drop(TRUE)

@@ -38,7 +38,6 @@ var/list/impact_master = list()
 
 	var/grillepasschance = 66
 	var/damage = 10
-	var/armor_penetration = 0 //Probability out of 100 whether this will penetrate the persons armor
 	var/damage_type = BRUTE //BRUTE, BURN, TOX, OXY, CLONE are the only things that should be in here
 	var/nodamage = 0 //Determines if the projectile will skip any damage inflictions
 	var/flag = "bullet" //Defines what armor to use when it hits things.  Must be set to bullet, laser, energy,or bomb	//Cael - bio and rad are also valid
@@ -106,11 +105,15 @@ var/list/impact_master = list()
 	var/fire_sound = 'sound/weapons/Gunshot.ogg' //sound that plays when the projectile is fired
 	var/rotate = 1 //whether the projectile is rotated based on angle or not
 	var/travel_range = 0	//if set, the projectile will be deleted when its distance from the firing location exceeds this
+	var/decay_type = null	//if set, along with travel range, will drop a new item of this type when the projectile exceeds its course
 
 /obj/item/projectile/New()
 	..()
 	initial_pixel_x = pixel_x
 	initial_pixel_y = pixel_y
+
+/obj/item/projectile/proc/hit_apply(var/mob/living/X, var/blocked) // this is relevant because of projectile/energy/electrode
+	X.apply_effects(stun, weaken, paralyze, irradiate, stutter, eyeblur, drowsy, agony, blocked)
 
 /obj/item/projectile/proc/on_hit(var/atom/atarget, var/blocked = 0)
 	if(blocked >= 2)
@@ -128,7 +131,7 @@ var/list/impact_master = list()
 	var/mob/living/L = atarget
 	if(L.flags & INVULNERABLE)
 		return 0
-	L.apply_effects(stun, weaken, paralyze, irradiate, stutter, eyeblur, drowsy, agony, blocked) // add in AGONY!
+	hit_apply(L)
 	if(jittery)
 		L.Jitter(jittery)
 	if(!isnull(hitsound))
@@ -425,7 +428,10 @@ var/list/impact_master = list()
 		bullet_die()
 		return 1
 	if(travel_range)
-		if(get_exact_dist(starting, get_turf(src)) > travel_range)
+		var/turf/T = get_turf(src)
+		if(get_exact_dist(starting, T) > travel_range)
+			if (decay_type)
+				new decay_type(T)
 			bullet_die()
 			return 1
 	kill_count--

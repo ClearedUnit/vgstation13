@@ -6,16 +6,17 @@
 	icon_state = "shade"
 	icon_living = "shade"
 	icon_dead = "shade_dead"
-	maxHealth = 50
-	health = 50
+	maxHealth = 40
+	health = 40
 	speak_emote = list("hisses")
 	emote_hear = list("wails","screeches")
 	response_help  = "puts their hand through"
 	response_disarm = "flails at"
 	response_harm   = "punches"
-	melee_damage_lower = 5
-	melee_damage_upper = 15
+	melee_damage_lower = 8
+	melee_damage_upper = 8
 	attacktext = "torments"
+	attack_sound = 'sound/hallucinations/growl1.ogg'
 	minbodytemp = 0
 	maxbodytemp = 4000
 	min_oxy = 0
@@ -23,13 +24,22 @@
 	max_tox = 0
 	speed = 1
 	stop_automated_movement = TRUE
-	status_flags = 0
 	faction = "cult"
 	status_flags = CANPUSH
 	supernatural = TRUE
 	flying = TRUE
 	meat_type = /obj/item/weapon/ectoplasm
 	mob_property_flags = MOB_SUPERNATURAL
+
+/mob/living/simple_animal/shade/New()
+	..()
+	add_language(LANGUAGE_CULT)
+
+/mob/living/simple_animal/shade/death(var/gibbed = FALSE)
+	var/turf/T = get_turf(src)
+	if (T)
+		playsound(T, get_sfx("soulstone"), 50,1)
+	..(gibbed)
 
 /mob/living/simple_animal/shade/Login()
 	..()
@@ -95,7 +105,7 @@
 			var/damage = O.force
 			if (O.damtype == HALLOSS)
 				damage = 0
-			if(istype(O,/obj/item/weapon/nullrod))
+			if(isholyweapon(O))
 				damage *= 2
 				purge = 3
 			adjustBruteLoss(damage)

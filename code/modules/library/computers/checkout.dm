@@ -49,7 +49,7 @@
 			dat += "</ol>"
 
 			if(src.arcanecheckout)
-				new /obj/item/weapon/tome_legacy(src.loc)
+				new /obj/item/weapon/tome(src.loc)
 				to_chat(user, "<span class='warning'>Your sanity barely endures the seconds spent in the vault's browsing window. The only thing to remind you of this when you stop browsing is a dusty old tome sitting on the desk. You don't really remember printing it.</span>")
 				user.visible_message("[user] stares at the blank screen for a few moments, his expression frozen in fear. When he finally awakens from it, he looks a lot older.", 2)
 				src.arcanecheckout = 0
@@ -330,12 +330,14 @@
 						B.name = R.bible_name
 						B.my_rel = R
 
-					else if (ticker && (ticker.Bible_icon_state && ticker.Bible_item_state)) // No faith
-						B.icon_state = ticker.Bible_icon_state
-						B.item_state = ticker.Bible_item_state
-						B.name = ticker.Bible_name
-						B.my_rel = ticker.chap_rel
-
+					else if (ticker.religions.len) // No faith
+						var/datum/religion/R = input(usr, "Which holy book?") as anything in ticker.religions
+						if(!R.holy_book)
+							return
+						B.icon_state = R.holy_book.icon_state
+						B.item_state = R.holy_book.item_state
+						B.name = R.bible_name
+						B.my_rel = R
 					B.forceMove(src.loc)
 
 					spawn(60)
@@ -482,4 +484,5 @@
 		B.author = newbook.author
 		B.dat = http
 		B.icon_state = "book[rand(1,9)]"
+		B.item_state = B.icon_state
 	src.visible_message("[src]'s printer hums as it produces a completely bound book. How did it do that?")

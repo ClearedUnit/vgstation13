@@ -33,7 +33,7 @@ var/list/nest_locations = list()
 	unsuitable_atoms_damage = 15
 	faction = "alien"
 	environment_smash_flags = SMASH_LIGHT_STRUCTURES | SMASH_CONTAINERS | SMASH_WALLS | OPEN_DOOR_WEAK
-	status_flags = CANPUSH
+	status_flags = CANPUSH|UNPACIFIABLE
 	minbodytemp = 0
 	heat_damage_per_tick = 20
 	treadmill_speed = 4 //Not as insane as it seems, because of their slow default move rate, this is more like a functional 2x human
@@ -43,7 +43,10 @@ var/list/nest_locations = list()
 	var/acid = 200
 
 /mob/living/simple_animal/hostile/alien/Life()
-	..()
+	. = ..()
+	if(!.)
+		return
+
 	var/turf/T = get_turf(src)
 	if(weed < 50)
 		weed++
@@ -242,12 +245,15 @@ var/list/nest_locations = list()
 	projectiletype = /obj/item/projectile/neurotox
 	projectilesound = 'sound/weapons/pierce.ogg'
 	rapid = 1
-	status_flags = 0
+	status_flags = UNPACIFIABLE
 	var/nest = 65
 	var/egg = 55
 
 /mob/living/simple_animal/hostile/alien/queen/Life()
-	..()
+	. = ..()
+	if(!.)
+		return
+
 	var/turf/T = get_turf(src)
 	if(nest < 75)
 		nest++

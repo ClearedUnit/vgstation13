@@ -1,6 +1,6 @@
 /obj/item/weapon/gun/energy/ionrifle
 	name = "ion rifle"
-	desc = "A man portable anti-armor weapon designed to disable mechanical threats"
+	desc = "A man portable anti-armor weapon designed to disable mechanical threats."
 	icon_state = "ionrifle"
 	item_state = null
 	inhand_states = list("left_hand" = 'icons/mob/in-hand/left/guninhands_left.dmi', "right_hand" = 'icons/mob/in-hand/right/guninhands_right.dmi')
@@ -16,16 +16,22 @@
 /obj/item/weapon/gun/energy/ionrifle/emp_act(severity)
 	return
 
-/obj/item/weapon/gun/energy/ionrifle/ionpistol
-	name = "ion pistol"
-	desc = "A small, low capacity ion weapon designed to disable mechanical threats"
-	icon_state = "ionpistol"
+/obj/item/weapon/gun/energy/ionrifle/ioncarbine
+	name = "ion carbine"
+	desc = "A stopgap ion weapon designed to disable smaller mechanical threats."
+	icon_state = "ioncarbine"
 	w_class = W_CLASS_MEDIUM
 	slot_flags = SLOT_BELT
-	cell_type = "/obj/item/weapon/cell/crap"
+	cell_type = "/obj/item/weapon/cell/crap/better"
 	projectile_type = "/obj/item/projectile/ionsmall"
 
-/obj/item/weapon/gun/energy/ionrifle/ionpistol/isHandgun()
+/obj/item/weapon/gun/energy/ionrifle/ioncarbine/ionpistol
+	name = "ion pistol"
+	desc = "A small, low capacity ion weapon designed to disrupt smaller mechanical threats."
+	icon_state = "ionpistol"
+	cell_type = "/obj/item/weapon/cell/crap"
+
+/obj/item/weapon/gun/energy/ionrifle/ioncarbine/ionpistol/isHandgun()
 	return TRUE
 
 /obj/item/weapon/gun/energy/decloner
@@ -62,7 +68,7 @@
 
 /obj/item/weapon/gun/energy/staff
 	name = "staff of change"
-	desc = "An artefact that spits bolts of coruscating energy which cause the target's very form to reshape itself"
+	desc = "An artefact that spits bolts of coruscating energy which cause the target's very form to reshape itself."
 	icon = 'icons/obj/wizard.dmi'
 	icon_state = "staffofchange"
 	item_state = "staffofchange"
@@ -191,7 +197,8 @@
 	if(!ishuman(target) || !charges || get_dist(target, user) > 7)
 		return 0
 	var/mob/living/carbon/human/H = target
-	if(!H.stat || H.health > config.health_threshold_crit)
+	if(!H.stat || (H.stat < DEAD && H.health > config.health_threshold_crit))
+		to_chat(user, "<span class = 'warning'>[!H.stat?"\The [target] needs to be dead or in a critical state first.":H.health>config.health_threshold_crit?"\The [target] has not received enough damage.":"Something went wrong with the conversion process."]</span>")
 		return 0
 
 	//Pretty particles
@@ -400,17 +407,17 @@
 		if(0)
 			mode = 1
 			charge_cost = 100
-			to_chat(user, "<span class='warning'>The [src.name] is now set to improve harvests.</span>")
+			to_chat(user, "<span class='warning'>\The [src] is now set to improve harvests.</span>")
 			projectile_type = "/obj/item/projectile/energy/florayield"
 			modifystate = "florayield"
 		if(1)
 			mode = 0
 			charge_cost = mutstrength * 10
-			to_chat(user, "<span class='warning'>The [src.name] is now set to induce mutations.</span>")
+			to_chat(user, "<span class='warning'>\The [src] is now set to induce mutations.</span>")
 			projectile_type = "/obj/item/projectile/energy/floramut"
 			modifystate = "floramut"
 		if(2)
-			to_chat(user, "<span class='warning'>The [src.name] appears to be locked into one mode.</span>")
+			to_chat(user, "<span class='warning'>\The [src] appears to be locked into one mode.</span>")
 			return
 	update_icon()
 	return
@@ -538,7 +545,7 @@ obj/item/weapon/gun/energy/staff/focus/attack_self(mob/living/user as mob)
 		recent_reload = 0
 	..()
 */
-/obj/item/weapon/gun/energy/kinetic_accelerator/attack_self(var/mob/living/user/L)
+/obj/item/weapon/gun/energy/kinetic_accelerator/attack_self(var/mob/living/user)
 	if(overheat || recent_reload)
 		return
 	power_supply.give(500)

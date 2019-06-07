@@ -19,6 +19,8 @@
 	density = 1
 	anchored = 0
 
+	mech_flags = MECH_SCAN_FAIL
+
 	var/max_luminosity = 8 // Now varies based on power.
 
 	light_color = LIGHT_COLOR_YELLOW
@@ -144,10 +146,12 @@
 	var/prints = ""
 	if(src.fingerprintshidden)
 		prints = ", all touchers: [list2params(src.fingerprintshidden)]"
-	SetUniversalState(/datum/universal_state/supermatter_cascade)
-	S.expand(STAGE_SUPER, 1)
-	log_admin("New super singularity made by eating a SM crystal with prints: [prints]. Last touched by [src.fingerprintslast].")
-	message_admins("New super singularity made by eating a SM crystal with prints: [prints]. Last touched by [src.fingerprintslast].")
+	if(current_size == STAGE_SUPER) // and this is to go even further beyond
+		if(!istype(universe,/datum/universal_state/supermatter_cascade))
+			SetUniversalState(/datum/universal_state/supermatter_cascade)
+		S.expand(STAGE_SSGSS, 1)
+	log_admin("New SSGSS made by eating a SM crystal with prints: [prints]. Last touched by [src.fingerprintslast].")
+	message_admins("New SSGSS made by eating a SM crystal with prints: [prints]. Last touched by [src.fingerprintslast].")
 	qdel(src)
 	return 20000
 
@@ -390,8 +394,16 @@
 	if(istype(AM, /obj/machinery/power/supermatter))
 		AM.visible_message("<span class='sinister'>As \the [src] bumps into \the [AM] an otherworldly resonance ringing begins to shake the room, you ponder for a moment all the incorrect choices in your life that led you here, to this very moment, to witness this. You take one final sigh before it all ends.</span>")
 		sleep(10) //Adds to the hilarity
+		score["shardstouched"]++
 		playsound(src, 'sound/effects/supermatter.ogg', 50, 1)
 		explode()
+		return
+	if(istype(AM, /obj/item/supermatter_splinter))
+		AM.visible_message("<span class='sinister'>As \the [AM] collides with \the [src], </span><span class = 'warning'>rather than exploding, \the [AM] fuses to \the [src].</span>")
+		playsound(src, 'sound/effects/supermatter.ogg', 50, 1)
+		power_loss_modifier *= 1.5
+		playsound(src, 'sound/effects/supermatter.ogg', 50, 1)
+		qdel(AM)
 		return
 	if(istype(AM, /mob/living))
 		AM.visible_message("<span class=\"warning\">\The [src] is slammed into by \the [AM], inducing a resonance... \his body begins to glow and catch aflame before flashing into ash.</span>",\
@@ -406,6 +418,19 @@
 	playsound(src, 'sound/effects/supermatter.ogg', 50, 1)
 
 	Consume(AM)
+
+/obj/machinery/power/supermatter/shard/Bumped(atom/AM)
+	..()
+	if(istype(AM, /obj/item/supermatter_splinter))
+		if(power_loss_modifier >= 2500)
+			visible_message("<span class = 'sinister'>As \the [AM] fuses to \the [src], \the [src] begins to glow an overworldly shimmer as it begins to pull additional mass from the environment around itself...</span>")
+			new/obj/effect/overlay/gravitywell(loc)
+			spawn(6 SECONDS)
+				if(gcDestroyed)
+					return //Something went wrong, oh no
+				var/turf/T = get_turf(src)
+				qdel(src)
+				new /obj/machinery/power/supermatter(T)
 
 
 /obj/machinery/power/supermatter/proc/Consume(var/mob/living/user)

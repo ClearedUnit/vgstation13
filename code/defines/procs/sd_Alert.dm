@@ -92,93 +92,93 @@ proc/sd_Alert(client/who, message, title, buttons = list("Ok"),	default, duratio
 	. = T.Response()
 
 sd_alert
-	var
-		client/target
-		response
-		list/validation
 
-	Del()
-		target << browse(null,"window=\ref[src]")
-		..()
+	var/client/target
+	var/response
+	var/list/validation
 
-	New(who, tag)
-		..()
-		target = who
-		src.tag = tag
+sd_alert/Del()
+	target << browse(null,"window=\ref[src]")
+	..()
 
-	Topic(href,params[])
-		if(usr.client != target)
-			return
-		response = params["clk"]
+sd_alert/New(who, tag)
+	..()
+	target = who
+	src.tag = tag
 
-	proc/Display(message,title,list/buttons,default,unfocus,size,table,style,select,flags)
-		if(unfocus)
-			spawn() target << browse(null,null)
-		if(istext(buttons))
-			buttons = list(buttons)
-		if(!default)
-			default = buttons[1]
-		if(!(flags & SD_ALERT_NOVALIDATE))
-			validation = buttons.Copy()
+sd_alert/Topic(href,params[])
+	if(usr.client != target)
+		return
+	response = params["clk"]
 
-		var/html = {"<head><title>[title]</title>[style]<script>\
-		function c(x) {document.location.href='BYOND://?src=\ref[src];'+x;}\
-		</script></head><body onLoad="fcs.focus();"\
-		[(flags&SD_ALERT_SCROLL)?"":" scroll=no"]><table [table]><tr>\
-		<td>[message]</td></tr><tr><th>"}
+sd_alert/proc/Display(message,title,list/buttons,default,unfocus,size,table,style,select,flags)
+	if(unfocus)
+		spawn() target << browse(null,null)
+	if(istext(buttons))
+		buttons = list(buttons)
+	if(!default)
+		default = buttons[1]
+	if(!(flags & SD_ALERT_NOVALIDATE))
+		validation = buttons.Copy()
 
-		if(select || (flags & SD_ALERT_SELECT_MULTI))	// select style choices
-			html += {"<FORM ID=fcs ACTION='BYOND://?' METHOD=GET>\
-				<INPUT TYPE=HIDDEN NAME=src VALUE='\ref[src]'>
-				<SELECT NAME=clk SIZE=[select]\
-				[(flags & SD_ALERT_SELECT_MULTI)?" MULTIPLE":""]>"}
-			for(var/b in buttons)
-				html += "<OPTION[(b == default)?" SELECTED":""]>\
-					[lhtml_encode(b)]</OPTION>"
-			html += "</SELECT><BR><INPUT TYPE=SUBMIT VALUE=Submit></FORM>"
-		else if(flags & SD_ALERT_LINKS)		// text link style
-			for(var/b in buttons)
-				var/list/L = list()
-				L["clk"] = b
-				var/html_string=list2params(L)
-				var/focus
-				if(b == default)
-					focus = " ID=fcs"
-				html += "<A[focus] href=# onClick=\"c('[html_string]')\">[lhtml_encode(b)]</A>\
-					<BR>"
-		else	// button style choices
-			for(var/b in buttons)
-				var/list/L = list()
-				L["clk"] = b
-				var/html_string=list2params(L)
-				var/focus
-				if(b == default)
-					focus = " ID=fcs"
-				html += "<INPUT[focus] TYPE=button VALUE='[lhtml_encode(b)]' \
-					onClick=\"c('[html_string]')\"> "
+	var/html = {"<head><title>[title]</title>[style]<script>\
+	function c(x) {document.location.href='BYOND://?src=\ref[src];'+x;}\
+	</script></head><body onLoad="fcs.focus();"\
+	[(flags&SD_ALERT_SCROLL)?"":" scroll=no"]><table [table]><tr>\
+	<td>[message]</td></tr><tr><th>"}
 
-		html += "</th></tr></table></body>"
+	if(select || (flags & SD_ALERT_SELECT_MULTI))	// select style choices
+		html += {"<FORM ID=fcs ACTION='BYOND://?' METHOD=GET>\
+			<INPUT TYPE=HIDDEN NAME=src VALUE='\ref[src]'>
+			<SELECT NAME=clk SIZE=[select]\
+			[(flags & SD_ALERT_SELECT_MULTI)?" MULTIPLE":""]>"}
+		for(var/b in buttons)
+			html += "<OPTION[(b == default)?" SELECTED":""]>\
+				[lhtml_encode(b)]</OPTION>"
+		html += "</SELECT><BR><INPUT TYPE=SUBMIT VALUE=Submit></FORM>"
+	else if(flags & SD_ALERT_LINKS)		// text link style
+		for(var/b in buttons)
+			var/list/L = list()
+			L["clk"] = b
+			var/html_string=list2params(L)
+			var/focus
+			if(b == default)
+				focus = " ID=fcs"
+			html += "<A[focus] href=# onClick=\"c('[html_string]')\">[lhtml_encode(b)]</A>\
+				<BR>"
+	else	// button style choices
+		for(var/b in buttons)
+			var/list/L = list()
+			L["clk"] = b
+			var/html_string=list2params(L)
+			var/focus
+			if(b == default)
+				focus = " ID=fcs"
+			html += "<INPUT[focus] TYPE=button VALUE='[lhtml_encode(b)]' \
+				onClick=\"c('[html_string]')\"> "
 
-		target << browse(html,"window=\ref[src];size=[size];can_close=0")
+	html += "</th></tr></table></body>"
 
-	proc/Response()
-		var/validated
-		while(!validated)
-			while(target && !response)	// wait for a response
-				sleep(2)
+	target << browse(html,"window=\ref[src];size=[size];can_close=0")
 
-			if(response && validation)
-				if(istype(response, /list))
-					var/list/L = response - validation
-					if(L.len)
-						response = null
-					else
-						validated = 1
-				else if(response in validation)
-					validated = 1
+sd_alert/proc/Response()
+	var/validated
+	while(!validated)
+		while(target && !response)	// wait for a response
+			sleep(2)
+
+		if(response && validation)
+			if(istype(response, /list))
+				var/list/L = response - validation
+				if(L.len)
+					response = null
 				else
-					response=null
-			else
+					validated = 1
+			else if(response in validation)
 				validated = 1
-		spawn(2) qdel(src)
-		return response
+			else
+				response=null
+		else
+			validated = 1
+	spawn(2) qdel(src)
+	return response

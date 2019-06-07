@@ -1,7 +1,7 @@
 /datum/faction/syndicate/nuke_op
 	name = "Syndicate Nuclear Operatives"
 	ID = SYNDIOPS
-	required_pref = ROLE_OPERATIVE
+	required_pref = NUKE_OP
 	initial_role = NUKE_OP
 	late_role = NUKE_OP
 	initroletype = /datum/role/nuclear_operative
@@ -10,11 +10,18 @@
 	Load up, grab the nuke, don't forget where you've parked, find the nuclear auth disk, and give them hell."
 	logo_state = "nuke-logo"
 	hud_icons = list("nuke-logo","nuke-logo-leader")
+	playlist = "nukesquad"
 
 /datum/faction/syndicate/nuke_op/forgeObjectives()
 	AppendObjective(/datum/objective/nuclear)
-	for(var/datum/role/nuclear_operative/N in members)
-		N.AnnounceObjectives()
+	AnnounceObjectives()
+
+/datum/faction/syndicate/nuke_op/GetScoreboard()
+	. = ..()
+	if(faction_scoreboard_data)
+		. += "<BR>The operatives bought:<BR>"
+		for(var/entry in faction_scoreboard_data)
+			. += "[entry]<BR>"
 
 /datum/faction/syndicate/nuke_op/AdminPanelEntry()
 	var/list/dat = ..()
@@ -63,6 +70,7 @@
 		synd_mind.current.forceMove(synd_spawn[spawnpos])
 
 		equip_nuke_op(synd_mind.current)
+		share_syndicate_codephrase(N.antag.current)
 
 		if(!leader_selected)
 			prepare_syndicate_leader(synd_mind, nuke_code)

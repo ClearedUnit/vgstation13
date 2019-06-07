@@ -13,6 +13,7 @@
 #define TOXIN 			"toxin"
 #define PLASTICIDE 			"plasticide"
 #define CYANIDE "cyanide"
+#define POTASSIUM_HYDROXIDE 			"potassium_hydroxide"
 #define CHEFSPECIAL 			"chefspecial"
 #define MINTTOXIN 			"minttoxin"
 #define MUTATIONTOXIN 			"mutationtoxin"
@@ -83,11 +84,13 @@
 #define ARITHRAZINE 			"arithrazine"
 #define ALKYSINE 			"alkysine"
 #define ALKYCOSINE 			"alkycosine"
+#define PHYTOSINE			"phytosine"
 #define IMIDAZOLINE 			"imidazoline"
 #define INACUSIATE 			"inacusiate"
 #define PERIDAXON 			"peridaxon"
 #define BICARIDINE 			"bicaridine"
 #define SYNTHOCARISOL 			"synthocarisol"
+#define PHYTOCARISOL			"phytocarisol"
 #define HYPERZINE 			"hyperzine"
 #define HYPOZINE 			"hypozine"
 #define CRYOXADONE 			"cryoxadone"
@@ -99,6 +102,7 @@
 #define MINDBREAKER 			"mindbreaker"
 #define HEARTBREAKER 			"heartbreaker"
 #define SPIRITBREAKER 			"spiritbreaker"
+#define DEFALEXORIN			"defalexorin"
 #define METHYLIN 			"methylin"
 #define BICARODYNE 			"bicarodyne"
 #define STABILIZINE 			"stabilizine"
@@ -220,6 +224,7 @@
 #define WHISKEYCOLA 			"whiskeycola"
 #define MARTINI 			"martini"
 #define VODKAMARTINI 			"vodkamartini"
+#define SAKEMARTINI         "sakemartini"
 #define WHITERUSSIAN 			"whiterussian"
 #define SCREWDRIVERCOCKTAIL 			"screwdrivercocktail"
 #define BOOGER 			"booger"
@@ -314,6 +319,7 @@
 #define DR_GIBB			"dr_gibb"
 #define SPACE_UP		"space_up"
 #define LEMON_LIME		"lemon_lime"
+#define DIY_SODA		"diy_soda"
 #define B52				"b52"
 #define MANHATTAN_PROJ	"manhattan_proj"
 #define BAHAMA_MAMA		"bahama_mama"
@@ -355,6 +361,12 @@
 #define SUICIDE			"suicide"
 #define KARMOTRINE		"karmotrine"
 #define DEGENERATECALCIUM "degeneratecalcium"
+#define GRAPEJUICE		"grapejuice"
+#define GGRAPEJUICE		"ggrapejuice"
+#define BWINE			"bwine"
+#define WWINE			"wwine"
+#define PLUMPHJUICE		"plumphjuice"
+#define PLUMPHWINE		"phwine"
 
 #define TUNGSTEN 			"tungsten"
 #define LITHIUMSODIUMTUNGSTATE 			"lithiumsodiumtungstate"
@@ -388,6 +400,10 @@
 #define APETRINE		"apetrine"
 #define SODIUMSILICATE	"sodiumsilicate"
 #define COLORFUL_REAGENT "colorful_reagent"
+#define AMINOMICIN		"aminomicin"
+#define AMINOCYPRINIDOL	"aminocyprinidol"
+#define TOMATO_SOUP		"tomato_soup"
+#define LUMINOL			"luminol"
 
 // How many units of reagent are consumed per tick, by default.
 #define REAGENTS_METABOLISM 0.2
@@ -398,6 +414,7 @@
 #define TEMPERATURE_FLAME 700
 #define TEMPERATURE_WELDER 3480
 #define TEMPERATURE_PLASMA 4500
+#define TEMPERATURE_ETHANOL (T0C+1560)
 #define HEAT_TRANSFER_MULTIPLIER 7 //Multiplies the numbers above when heating a reagent container. A truly magical number.
 
 // By defining the effect multiplier this way, it'll exactly adjust
@@ -409,3 +426,36 @@ var/list/tachycardics = list(COFFEE, INAPROVALINE, HYPERZINE, HYPOZINE, NITROGLY
 var/list/bradycardics = list(NEUROTOXIN, CRYOXADONE, CLONEXADONE, SPACE_DRUGS, STOXIN, GREYVODKA, CURARE, MESCALINE, VALERENIC_ACID)	//decrease heart rate
 var/list/heartstopper = list(/*"potassium_phorochloride",*/ ZOMBIEPOWDER) //this stops the heart
 var/list/cheartstopper = list(/*"potassium_chloride",*/ CHEESYGLOOP) //this stops the heart when overdose is met -- c = conditional
+
+//Lists of defines
+//Preferably have the synthetic (chemist-made) versions first, and alternatives after that. This helps with electrolyzing.
+
+#define ANTI_TOXINS list(ANTI_TOXIN, ALLICIN)
+#define KELOTANES list(KELOTANE, TANNIC_ACID)
+#define DERMALINES list(DERMALINE, KATHALAI)
+#define BICARIDINES list(BICARIDINE, OPIUM)
+#define SPACE_DRUGGS list(SPACE_DRUGS, MESCALINE)
+#define SYNAPTIZINES list(SYNAPTIZINE, CYTISINE)
+#define HYPERZINES list(HYPERZINE, COCAINE)
+#define IMIDAZOLINES list(IMIDAZOLINE, ZEAXANTHIN)
+#define STOXINS list(STOXIN, STOXIN2, VALERENIC_ACID)
+#define SACIDS list(SACID, FORMIC_ACID)
+#define PACIDS list(PACID, PHENOL)
+#define NEUROTOXINS list(NEUROTOXIN, CURARE)
+#define TOXINS list(TOXIN, SOLANINE)
+#define CRYPTOBIOLINS list(CRYPTOBIOLIN, PHYSOSTIGMINE)
+#define IMPEDREZENES list(IMPEDREZENE, HYOSCYAMINE)
+#define LEXORINS list(LEXORIN, CORIAMYRTIN)
+#define DEXALINS list(DEXALIN, THYMOL)
+
+#define INCENSE_HAREBELLS	"harebells"
+#define INCENSE_POPPIES		"poppies"
+#define INCENSE_SUNFLOWERS	"sunflowers"
+#define INCENSE_MOONFLOWERS	"moonflowers"
+#define INCENSE_NOVAFLOWERS	"novaflowers"
+#define INCENSE_BANANA		"bananas"
+#define INCENSE_BOOZE		"helmets"
+#define INCENSE_LEAFY		"cabbage"
+#define INCENSE_VAPOR		"vaporsacs"
+#define INCENSE_DENSE		"grasses"
+#define INCENSE_CRAVE		"vales"

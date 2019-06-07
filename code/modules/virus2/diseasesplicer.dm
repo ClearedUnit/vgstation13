@@ -20,7 +20,7 @@
 	light_color = LIGHT_COLOR_GREEN
 
 /obj/machinery/computer/diseasesplicer/attackby(var/obj/I, var/mob/user)
-	if(!(istype(I,/obj/item/weapon/virusdish) || istype(I,/obj/item/weapon/diseasedisk)))
+	if(!(istype(I,/obj/item/weapon/virusdish) || istype(I,/obj/item/weapon/disk/disease)))
 		return ..()
 
 	if(istype(I, /obj/item/weapon/virusdish))
@@ -32,8 +32,8 @@
 			return
 		dish = I
 
-	if(istype(I, /obj/item/weapon/diseasedisk))
-		var/obj/item/weapon/diseasedisk/disk = I
+	if(istype(I, /obj/item/weapon/disk/disease))
+		var/obj/item/weapon/disk/disease/disk = I
 		visible_message("<span class='notice'>[user] swipes \the [disk] against \the [src].</span>", "<span class='notice'>You swipe \the [disk] against \the [src], copying the data into the machine's buffer.</span>")
 		memorybank = disk.effect
 
@@ -100,11 +100,11 @@
 		burning -= 1
 		if(!burning)
 			nanomanager.update_uis(src)
-			var/obj/item/weapon/diseasedisk/d = new /obj/item/weapon/diseasedisk(loc)
+			var/obj/item/weapon/disk/disease/d = new /obj/item/weapon/disk/disease(loc)
 			if(analysed)
-				d.name = "[memorybank.name] GNA disk (Stage: [memorybank.stage])"
+				d.name = "\improper [memorybank.name] GNA disk (Stage: [memorybank.stage])"
 			else
-				d.name = "Unknown GNA disk (Stage: [memorybank.stage])"
+				d.name = "unknown GNA disk (Stage: [memorybank.stage])"
 			d.effect = memorybank
 			alert_noise("ping")
 
@@ -117,7 +117,7 @@
 		var/datum/disease2/effect/e = effects[x]
 		if(e.stage == memorybank.stage)
 			effects[x] = memorybank.getcopy(dish.virus2)
-			log_debug("Virus [dish.virus2.uniqueID] had [memorybank.name] spliced into to replace [e.name] by [key_name(usr)].")
+			log_debug("[dish.virus2.form] [dish.virus2.uniqueID] had [memorybank.name] spliced into to replace [e.name] by [key_name(usr)].")
 			dish.virus2.log += "<br />[timestamp()] [memorybank.name] spliced in by [key_name(usr)] (replaces [e.name])"
 			break
 

@@ -72,6 +72,7 @@ var opts = {
 // If not set to normal, a CSS file `browserOutput_${name}.css` will be added to the head.
 var colorPresets = [
 	'normal',
+	'dark',
 	'colorblindv1'
 ]
 
@@ -97,6 +98,7 @@ if (typeof String.prototype.trim !== 'function') {
 function updateColorPreset() {
 	var el = $("#colorPresetLink")[0];
 	el.href = "browserOutput_"+colorPresets[opts.colorPreset]+".css";
+	runByond('?_src_=chat&proc=colorPresetPost&preset='+colorPresets[opts.colorPreset]);
 }
 
 //Shit fucking piece of crap that doesn't work god fuckin damn it
@@ -286,7 +288,7 @@ function setCookie(cname, cvalue, exdays) {
 	var d = new Date();
 	d.setTime(d.getTime() + (exdays*24*60*60*1000));
 	var expires = 'expires='+d.toUTCString();
-	document.cookie = cname + '=' + cvalue + '; ' + expires;
+	document.cookie = cname + '=' + cvalue + '; ' + expires + '; path=/';
 }
 
 function getCookie(cname) {

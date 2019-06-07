@@ -77,6 +77,12 @@ var/list/LOGGED_SPLASH_REAGENTS = list(FUEL, THERMITE)
 	if(!possible_transfer_amounts)
 		src.verbs -= /obj/item/weapon/reagent_containers/verb/set_APTFT
 
+/obj/item/weapon/reagent_containers/Destroy()
+	if(istype(loc, /obj/machinery/iv_drip))
+		var/obj/machinery/iv_drip/holder = loc
+		holder.remove_container()
+ . = ..()
+
 /obj/item/weapon/reagent_containers/attack_self(mob/user as mob)
 	return
 
@@ -244,13 +250,14 @@ var/list/LOGGED_SPLASH_REAGENTS = list(FUEL, THERMITE)
 	var/success
 	// Transfer from dispenser
 	if (can_receive && istype(target, /obj/structure/reagent_dispensers))
-		var/tx_amount = transfer_sub(target, src, target:amount_per_transfer_from_this, user)
-		if (tx_amount > 0)
-			to_chat(user, "<span class='notice'>You fill \the [src][src.is_full() ? " to the brim" : ""] with [tx_amount] units of the contents of \the [target].</span>")
-
-		return tx_amount
+		var/obj/structure/reagent_dispensers/S = target
+		if(S.can_transfer(src, user))
+			var/tx_amount = transfer_sub(target, src, S.amount_per_transfer_from_this, user)
+			if (tx_amount > 0)
+				to_chat(user, "<span class='notice'>You fill \the [src][src.is_full() ? " to the brim" : ""] with [tx_amount] units of the contents of \the [target].</span>")
+				return tx_amount
 	// Transfer to container
-	else if (can_send /*&& target.reagents**/)
+	if (can_send /*&& target.reagents**/)
 		var/obj/container = target
 		if (!container.is_open_container() && istype(container,/obj/item/weapon/reagent_containers) && !istype(container,/obj/item/weapon/reagent_containers/food/snacks))
 			return -1
@@ -263,7 +270,6 @@ var/list/LOGGED_SPLASH_REAGENTS = list(FUEL, THERMITE)
 				to_chat(user, "<span class='notice'>You transfer [success] units of the solution to \the [target].</span>")
 
 			return (success)
-
 	if(!success)
 		// Mob splashing
 		if(splashable_units != 0)
@@ -294,9 +300,13 @@ var/list/LOGGED_SPLASH_REAGENTS = list(FUEL, THERMITE)
 	return 0
 
 /obj/item/weapon/reagent_containers/proc/is_empty()
+	if(!reagents)
+		return TRUE
 	return reagents.total_volume <= 0
 
 /obj/item/weapon/reagent_containers/proc/is_full()
+	if(!reagents)
+		return FALSE
 	return reagents.total_volume >= reagents.maximum_volume
 
 /obj/item/weapon/reagent_containers/proc/can_transfer_an_APTFT()
@@ -374,9 +384,9 @@ var/list/LOGGED_SPLASH_REAGENTS = list(FUEL, THERMITE)
 	..()
 	attempt_heating(I, user)
 
-/obj/item/weapon/reagent_containers/proc/attempt_heating(obj/item/I, mob/user)
-	var/temperature = I.is_hot()
-	var/thermal_energy = I.thermal_energy_transfer()
+/obj/item/weapon/reagent_containers/attempt_heating(atom/A, mob/user)
+	var/temperature = A.is_hot()
 	if(temperature && reagents)
-		reagents.heating(thermal_energy, temperature)
-		to_chat(user, "<span class='notice'>You heat [src] with [I].</span>")
+		reagents.heating(A.thermal_energy_transfer(), temperature)
+		if(user)
+			to_chat(user, "<span class='notice'>You heat \the [src] with \the [A].</span>")

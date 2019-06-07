@@ -37,6 +37,21 @@
 		desc += " It has a slot for locking circuitry."
 	else if (has_lockless_type)
 		desc += " The locking circuitry could be unmounted if unlocked."
+	if(ticker && ticker.current_state >= GAME_STATE_PLAYING)
+		initialize()
+
+// Returns null or a list of items to spawn
+/obj/structure/closet/proc/atoms_to_spawn()
+	return null
+
+// Creates the items this closet is supposed to contain and places them inside
+// Override this if you need custom logic
+/obj/structure/closet/proc/spawn_contents()
+	var/list/to_spawn = atoms_to_spawn()
+	for(var/path in to_spawn)
+		var/amount = to_spawn[path] || 1
+		for(var/i in 1 to amount)
+			new path(src)
 
 /obj/structure/closet/basic
 	has_lock_type = /obj/structure/closet/secure_closet/basic
@@ -46,8 +61,10 @@
 
 /obj/structure/closet/initialize()
 	..()
+	spawn_contents()
 	if(!opened)		// if closed, any item at the crate's loc is put in the contents
-		take_contents()
+		if(!ticker || ticker.current_state < GAME_STATE_PLAYING)
+			take_contents()
 	else
 		setDensity(FALSE)
 
@@ -109,7 +126,7 @@
 			break
 		INVOKE_EVENT(AM.on_moved,list("loc"=src))
 
-/obj/structure/closet/proc/open()
+/obj/structure/closet/proc/open(mob/user)
 	if(src.opened)
 		return 0
 
@@ -148,7 +165,7 @@
 	AM.forceMove(src)
 	return 1
 
-/obj/structure/closet/proc/close()
+/obj/structure/closet/proc/close(mob/user)
 	if(!src.opened)
 		return 0
 	if(!src.can_close())
@@ -194,10 +211,10 @@
 	playsound(src, sound_file, 15, 1, -3)
 	return 1
 
-/obj/structure/closet/proc/toggle()
+/obj/structure/closet/proc/toggle(mob/user)
 	if(src.opened)
-		return src.close()
-	return src.open()
+		return src.close(user)
+	return src.open(user)
 
 /obj/structure/closet/proc/add_lock(var/obj/item/weapon/circuitboard/airlock/E, var/mob/user)
 	if(has_lock_type && !electronics && E && E.icon_state != "door_electronics_smoked")
@@ -485,7 +502,7 @@
 	if(user.stat || !isturf(src.loc))
 		return
 
-	if(!src.open())
+	if(!src.open(user))
 		if(!lastbang)
 			to_chat(user, "<span class='notice'>It won't budge!</span>")
 			lastbang = 1
@@ -535,6 +552,7 @@
 			L << sound('sound/machines/click.ogg')
 			L << sound('sound/hallucinations/scary.ogg')
 			L.Knockdown(5)
+			L.Stun(5)
 
 			sleep(50)
 
@@ -542,14 +560,14 @@
 				C.images -= temp_overlay
 			return
 
-	if(!src.toggle())
+	if(!src.toggle(user))
 		to_chat(usr, "<span class='notice'>It won't budge!</span>")
 
 // tk grab then use on self
 /obj/structure/closet/attack_self_tk(mob/user as mob)
 	src.add_fingerprint(user)
 
-	if(!src.toggle())
+	if(!src.toggle(user))
 		to_chat(usr, "<span class='notice'>It won't budge!</span>")
 
 /obj/structure/closet/verb/verb_toggleopen()
@@ -581,13 +599,12 @@
 // and due to an oversight in turf/Enter() were going through walls.  That
 // should be independently resolved, but this is also an interesting twist.
 /obj/structure/closet/Exit(atom/movable/AM)
-	open()
+	open(AM)
 	if(AM.loc == src)
 		return 0
 	return 1
 
-/obj/structure/closet/container_resist()
-	var/mob/user = usr
+/obj/structure/closet/container_resist(mob/user)
 	var/breakout_time = 2 //2 minutes by default
 
 	if(opened || (!welded && !locked))
@@ -610,7 +627,7 @@
 		broken = 1 //applies to secure lockers only
 		visible_message("<span class='danger'>[user] successfully broke out of [src]!</span>")
 		to_chat(user, "<span class='notice'>You successfully break out of [src]!</span>")
-		open()
+		open(user)
 
 /obj/structure/closet/send_to_past(var/duration)
 	..()

@@ -24,8 +24,10 @@
 	100;/obj/machinery/auto_cloner,
 	100;/obj/structure/bed/chair/vehicle/gigadrill,
 	100;/obj/mecha/working/hoverpod,
+	100;/obj/structure/essence_printer,
 	100;/obj/machinery/replicator,
 	100;/obj/machinery/communication,
+	100;/mob/living/simple_animal/hostile/roboduck,
 	1000;/obj/machinery/artifact)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -55,7 +57,7 @@
 	excavation_level = rand(5,50)
 
 /obj/structure/boulder/attackby(obj/item/weapon/W as obj, mob/user as mob)
-	if (istype(W, /obj/item/device/core_sampler))
+	if (istype(W, /obj/item/device/core_sampler) && geological_data)
 		src.geological_data.artifact_distance = rand(-100,100) / 100
 		src.geological_data.artifact_id = artifact_find.artifact_id
 

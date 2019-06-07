@@ -16,6 +16,7 @@
 #define CUSTOMSQUAD "custom squad"
 #define VOXSHOAL "vox Shoal"
 #define BLOBCONGLOMERATE "blob conglomerate"
+#define CLOCKWORK "clockwork"
 //-------
 #define HIVEMIND "changeling hivemind"
 #define WIZFEDERATION "wizard federation"
@@ -28,6 +29,7 @@
 #define ROGUE "rogue agent"//double agents
 #define CHANGELING "changeling"
 #define VAMPIRE "vampire"
+#define THRALL "thrall"
 #define WIZARD "wizard"
 #define CULTIST "cultist"
 #define LEGACY_CULTIST "legacy cultist"
@@ -36,20 +38,26 @@
 #define REV "revolutionary"
 #define WIZAPP "wizard's apprentice"
 #define MADMONKEY "monkey fever infected"
+#define NINJA "Space Ninja"
 #define WISHGRANTERAVATAR "avatar of the Wish Granter"
 #define HIGHLANDER "highlander"
 #define DEATHSQUADIE "death commando"
 #define SYNDIESQUADIE "syndicate commando"
 #define RESPONDER "emergency responder"
 #define MALF "malfunctioning AI"
+#define MALFBOT "malfunctioning-slaved cyborg"
 #define VOXRAIDER "vox raider"
 #define BLOBOVERMIND "blob overmind"
-#define HIGHLANDER "highlander"
+#define BLOBCEREBRATE "blob cerebrate"
 #define IMPLANTSLAVE "Greytider"
 #define SURVIVOR "Survivor"
 #define CRUSADER "Crusader"
 #define MAGICIAN "Magician"
 #define IMPLANTLEADER "Grey Leader"
+#define CLOCKWORK_GRAVEKEEPER "clockwork gravekeeper"
+#define GRINCH "The Grinch"
+#define CATBEAST "loose catbeast"
+#define RAMBLER "soul rambler"
 
 #define GREET_DEFAULT		"default"
 #define GREET_ROUNDSTART	"roundstart"
@@ -57,16 +65,29 @@
 #define GREET_ADMINTOGGLE	"admintoggle"
 #define GREET_CUSTOM		"custom"
 #define GREET_MIDROUND		"midround"
+#define GREET_MASTER		"master"
 
 #define GREET_AUTOTATOR		"autotator"
 
 #define GREET_CONVERTED		"converted"
 #define GREET_PAMPHLET		"pamphlet"
 #define GREET_SOULSTONE		"soulstone"
+#define GREET_SOULBLADE		"soulblade"
 #define GREET_RESURRECT		"resurrect"
 
+#define GREET_REVSQUAD_CONVERTED "revsquad"
+#define GREET_PROVOC_CONVERTED	 "provocateur"
 
-//////////////////////////////////CULT STUFF////////////////////////////////////
+
+///////////////// FACTION STAGES //////////////////////
+#define FACTION_DEFEATED	-1
+#define FACTION_DORMANT		0
+#define FACTION_ACTIVE		1
+#define FACTION_ENDGAME		3
+#define FACTION_VICTORY		5
+
+#define MALF_CHOOSING_NUKE	4
+
 #define CULT_MENDED		-1
 #define CULT_PROLOGUE	0
 #define CULT_ACT_I		1
@@ -74,6 +95,9 @@
 #define CULT_ACT_III	3
 #define CULT_ACT_IV		4
 #define CULT_EPILOGUE	5
+
+
+//////////////////////////////////CULT STUFF////////////////////////////////////
 
 #define BLOODCOST_TARGET_BLEEDER	"bleeder"
 #define BLOODCOST_AMOUNT_BLEEDER	"bleeder_amount"
@@ -97,6 +121,8 @@
 #define BLOODCOST_TOTAL		"total"
 #define BLOODCOST_RESULT	"result"
 #define BLOODCOST_FAILURE	"failure"
+#define BLOODCOST_TRIBUTE	"tribute"
+#define BLOODCOST_USER	"user"
 
 #define RITUALABORT_ERASED	"erased"
 #define RITUALABORT_STAND	"too far"
@@ -111,6 +137,7 @@
 #define RITUALABORT_CONCEAL	"conceal"
 #define RITUALABORT_NEAR	"near"
 #define RITUALABORT_MISSING	"missing"
+#define RITUALABORT_OUTPOST "outpost"
 
 #define TATTOO_POOL		"Blood Communion"
 #define TATTOO_SILENT	"Silent Casting"
@@ -119,7 +146,7 @@
 #define TATTOO_FAST		"Rapid Tracing"
 #define TATTOO_CHAT		"Dark Communication"
 #define TATTOO_MANIFEST	"Pale Body"
-#define TATTOO_MEMORIZE	"Arcane Knowledge"
+#define TATTOO_MEMORIZE	"Arcane Dimension"
 #define TATTOO_SHORTCUT	"Shortcut Tracer"
 
 #define	TOME_CLOSED	1
@@ -130,6 +157,12 @@
 #define	RUNE_CANNOT		2
 
 #define	MAX_TALISMAN_PER_TOME	5
+
+#define SACRIFICE_CHANGE_COOLDOWN	30 MINUTES
+
+#define CONVERSION_REFUSE	-1
+#define CONVERSION_NOCHOICE	0
+#define CONVERSION_ACCEPT	1
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -151,4 +184,43 @@
 #define FROM_GHOSTS 1
 #define FROM_PLAYERS 2
 
-#define PROTECTED_TRAITOR_PROB 66 // Probability than a protected role is rejected from the candidate list
+// -- Revs
+
+#define ADD_REVOLUTIONARY_FAIL_IS_COMMAND -1
+#define ADD_REVOLUTIONARY_FAIL_IS_JOBBANNED -2
+#define ADD_REVOLUTIONARY_FAIL_IS_IMPLANTED -3
+#define ADD_REVOLUTIONARY_FAIL_IS_REV -4
+
+// -- Protected roles
+
+#define PROB_PROTECTED_REGULAR 50
+#define PROB_PROTECTED_RARE    80
+
+#define FACTION_FAILURE -1
+
+// -- The paper
+
+#define INTERCEPT_TIME_LOW 10 MINUTES
+#define INTERCEPT_TIME_HIGH 18 MINUTES
+
+// -- Injection delays (in ticks, ie, you need the /20 to get the real result)
+
+#define LATEJOIN_DELAY_MIN (5 MINUTES)/20
+#define LATEJOIN_DELAY_MAX (30 MINUTES)/20
+
+#define MIDROUND_DELAY_MIN (15 MINUTES)/20
+#define MIDROUND_DELAY_MAX (50 MINUTES)/20
+
+// -- Rulesets flags
+
+#define HIGHLANDER_RULESET 1
+#define TRAITOR_RULESET 2
+#define MINOR_RULESET 4
+
+// -- Distribution "modes"
+
+#define LORENTZ "Lorentz distribution"
+#define GAUSS "Normal distribution"
+#define DIRAC "Rigged threat number"
+#define EXPONENTIAL "Peaceful bias"
+#define UNIFORM "Uniform distribution"

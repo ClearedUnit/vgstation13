@@ -32,7 +32,12 @@
 	                            /obj/item/clothing/mask/facehugger/lamarr,
 	                            /obj/item/asteroid/hivelord_core,
 								/obj/item/weapon/reagent_containers/blood,
-								/obj/item/weapon/light)
+								/obj/item/weapon/light,
+								/obj/item/weapon/fossil/egg)
+
+/obj/item/weapon/reagent_containers/syringe/attackby(obj/item/weapon/W as obj, mob/user as mob)
+	if(istype(W, /obj/item/weapon/pen) || istype(W, /obj/item/device/flashlight/pen))
+		set_tiny_label(user)
 
 /obj/item/weapon/reagent_containers/syringe/suicide_act(mob/user)
 	to_chat(viewers(user), "<span class='danger'>[user] appears to be injecting an air bubble using a [src.name]! It looks like \he's trying to commit suicide.</span>")
@@ -172,7 +177,7 @@
 					"<span class='warning'>You insert the syringe into [target], draw back the plunger and get... nothing?</span>")
 	// Drawing from objects draws their contents
 	else if (isobj(target))
-		if (!target.is_open_container() && !istype(target, /obj/structure/reagent_dispensers) && !istype(target, /obj/item/slime_extract) && !istype(target, /obj/item/weapon/reagent_containers/blood))
+		if (!target.is_open_container() && !istype(target, /obj/item/slime_extract) && !istype(target, /obj/item/weapon/reagent_containers/blood))
 			to_chat(user, "<span class='warning'>You cannot directly remove reagents from this object.")
 			return
 
@@ -249,7 +254,7 @@
 			return
 
 		var/hit_area = affecting.display_name
-		if((user != target) && H.check_shields(7, "the [src.name]"))
+		if((user != target) && H.check_shields(7, src))
 			return
 
 		// Check for protection on the targeted area and show messages
@@ -284,6 +289,11 @@
 		mode = 0 //SYRINGE_DRAW
 		update_icon()
 
+/obj/item/weapon/reagent_containers/syringe/broken
+	desc = "A syringe. It is broken."
+	icon_state = "broken"
+	mode = SYRINGE_BROKEN
+
 /obj/item/weapon/reagent_containers/syringe/giant
 	name = "giant syringe"
 	desc = "A syringe commonly used for lethal injections."
@@ -293,6 +303,13 @@
 
 	can_draw_blood = FALSE
 	can_stab = FALSE
+
+/obj/item/weapon/reagent_containers/syringe/giant/New()
+	..()
+	appearance_flags |= PIXEL_SCALE
+	var/matrix/gisy = matrix()
+	gisy.Scale(1.2,1.2)
+	transform = gisy
 
 /obj/item/weapon/reagent_containers/syringe/giant/get_injection_time(var/mob/target)
 	if (istype(target, /mob/living/carbon/human))
@@ -317,7 +334,7 @@
 
 
 /obj/item/weapon/reagent_containers/syringe/inaprovaline
-	name = "Syringe (inaprovaline)"
+	name = "syringe (inaprovaline)"
 	desc = "Contains inaprovaline - used to stabilize patients."
 /obj/item/weapon/reagent_containers/syringe/inaprovaline/New()
 	..()
@@ -326,7 +343,7 @@
 	update_icon()
 
 /obj/item/weapon/reagent_containers/syringe/antitoxin
-	name = "Syringe (anti-toxin)"
+	name = "syringe (anti-toxin)"
 	desc = "Contains anti-toxins."
 /obj/item/weapon/reagent_containers/syringe/antitoxin/New()
 	..()
@@ -335,7 +352,7 @@
 	update_icon()
 
 /obj/item/weapon/reagent_containers/syringe/antiviral
-	name = "Syringe (spaceacillin)"
+	name = "syringe (spaceacillin)"
 	desc = "Contains antiviral agents."
 /obj/item/weapon/reagent_containers/syringe/antiviral/New()
 	..()
@@ -344,7 +361,7 @@
 	update_icon()
 
 /obj/item/weapon/reagent_containers/syringe/charcoal
-	name = "Syringe (Activated Charcoal)"
+	name = "syringe (activated charcoal)"
 	desc = "Contains activated charcoal - used to treat overdoses."
 /obj/item/weapon/reagent_containers/syringe/charcoal/New()
 	..()
@@ -353,7 +370,7 @@
 	update_icon()
 
 /obj/item/weapon/reagent_containers/syringe/giant/chloral
-	name = "Lethal Injection Syringe"
+	name = "lethal injection syringe"
 	desc = "Puts people into a sleep they'll never wake up from."
 /obj/item/weapon/reagent_containers/syringe/giant/chloral/New()
 	..()
@@ -365,7 +382,7 @@
 //Robot syringes
 //Not special in any way, code wise. They don't have added variables or procs.
 /obj/item/weapon/reagent_containers/syringe/robot/antitoxin
-	name = "Syringe (anti-toxin)"
+	name = "syringe (anti-toxin)"
 	desc = "Contains anti-toxins."
 /obj/item/weapon/reagent_containers/syringe/robot/antitoxin/New()
 	..()
@@ -374,7 +391,7 @@
 	update_icon()
 
 /obj/item/weapon/reagent_containers/syringe/robot/inoprovaline
-	name = "Syringe (inoprovaline)"
+	name = "syringe (inoprovaline)"
 	desc = "Contains inaprovaline - used to stabilize patients."
 /obj/item/weapon/reagent_containers/syringe/robot/inoprovaline/New()
 	..()
@@ -383,7 +400,7 @@
 	update_icon()
 
 /obj/item/weapon/reagent_containers/syringe/robot/charcoal
-	name = "Syringe (Activated Charcoal)"
+	name = "syringe (activated charcoal)"
 	desc = "Contains activated charcoal - used to treat overdoses."
 /obj/item/weapon/reagent_containers/syringe/robot/charcoal/New()
 	..()
@@ -392,7 +409,7 @@
 	update_icon()
 
 /obj/item/weapon/reagent_containers/syringe/robot/mixed
-	name = "Syringe (mixed)"
+	name = "syringe (mixed)"
 	desc = "Contains inaprovaline & anti-toxins."
 /obj/item/weapon/reagent_containers/syringe/robot/mixed/New()
 	..()

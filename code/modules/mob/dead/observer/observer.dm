@@ -190,7 +190,7 @@
 					if(!(M.dna.unique_enzymes in W.blood_DNA))
 						W.blood_DNA[M.dna.unique_enzymes] = M.dna.b_type
 
-	if(istype(W,/obj/item/weapon/storage/bible) || istype(W,/obj/item/weapon/nullrod))
+	if(istype(W,/obj/item/weapon/storage/bible) || isholyweapon(W))
 		var/mob/dead/M = src
 		if(src.invisibility == 0)
 			M.invisibility = 60
@@ -224,7 +224,7 @@ Works together with spawning an observer, noted above.
 	if(antagHUD)
 		var/list/target_list = list()
 		for(var/mob/living/target in oview(src))
-			if( target.mind&&(target.mind.antag_roles.len > 0 || issilicon(target)) )
+			if( target.mind&&(target.mind.antag_roles.len > 0 || issilicon(target) || target.hud_list[SPECIALROLE_HUD]) )
 				target_list += target
 		if(target_list.len)
 			assess_targets(target_list, src)
@@ -306,23 +306,36 @@ Works together with spawning an observer, noted above.
 			C.images += holder
 
 /mob/dead/proc/assess_targets(list/target_list, mob/dead/observer/U)
-	var/icon/tempHud = 'icons/mob/hud.dmi'
 	for(var/mob/living/target in target_list)
-		if(iscarbon(target))
-			for (var/R in target.mind.antag_roles)
-				var/datum/role/role = target.mind.antag_roles[R]
-				var/image/I = image('icons/role_HUD_icons.dmi', target, role.logo_state)
+		if(target.mind)
+			var/image/I
+			U.client.images -= target.hud_list[SPECIALROLE_HUD]
+			switch(target.mind.antag_roles.len)
+				if(0)
+					I = null
+				if(1)
+					for(var/R in target.mind.antag_roles)
+						var/datum/role/role = target.mind.antag_roles[R]
+						I = image('icons/role_HUD_icons.dmi', target, role.logo_state)
+				else
+					I = image('icons/role_HUD_icons.dmi', target, "multi-logo")
+			if(I)
 				I.pixel_x = 20 * PIXEL_MULTIPLIER
 				I.pixel_y = 20 * PIXEL_MULTIPLIER
 				I.plane = ANTAG_HUD_PLANE
+				target.hud_list[SPECIALROLE_HUD] = I
 				U.client.images += I
-		else if(issilicon(target))//If the silicon mob has no law datum, no inherent laws, or a law zero, add them to the hud.
+			else
+				target.hud_list[SPECIALROLE_HUD] = null
+
+
+		if(issilicon(target))//If the silicon mob has no law datum, no inherent laws, or a law zero, add them to the hud.
 			var/mob/living/silicon/silicon_target = target
 			if(!silicon_target.laws||(silicon_target.laws&&(silicon_target.laws.zeroth||!silicon_target.laws.inherent.len))||silicon_target.mind.special_role=="traitor")
 				if(isrobot(silicon_target))//Different icons for robutts and AI.
-					U.client.images += image(tempHud,silicon_target,"hudmalborg")
+					U.client.images += image('icons/mob/hud.dmi',silicon_target,"hudmalborg")
 				else
-					U.client.images += image(tempHud,silicon_target,"hudmalai")
+					U.client.images += image('icons/mob/hud.dmi',silicon_target,"hudmalai")
 	return 1
 
 /mob/proc/ghostize(var/flags = GHOST_CAN_REENTER,var/deafmute = 0)
@@ -331,6 +344,7 @@ Works together with spawning an observer, noted above.
 		if (deafmute)
 			ghostype = /mob/dead/observer/deafmute
 		var/mob/dead/observer/ghost = new ghostype(src, flags)	//Transfer safety to observer spawning proc.
+		ghost.attack_log += src.attack_log // Keep our attack logs.
 		ghost.timeofdeath = src.timeofdeath //BS12 EDIT
 		ghost.key = key
 		if(ghost.client && !ghost.client.holder && !config.antag_hud_allowed)		// For new ghosts we remove the verb from even showing up if it's not allowed.
@@ -355,7 +369,7 @@ This is the proc mobs get to turn into a ghost. Forked from ghostize due to comp
 				return
 
 	if(src.health < 0 && stat != DEAD) //crit people
-		succumb()
+		succumb_proc(0)
 		ghostize(1)
 	else if(stat == DEAD)
 		ghostize(1)
@@ -697,39 +711,17 @@ This is the proc mobs get to turn into a ghost. Forked from ghostize due to comp
 
 	to_chat(src, "<span class='notice'><B>Results:</B></span>")
 	if(abs(pressure - ONE_ATMOSPHERE) < 10)
-		to_chat(src, "<span class='notice'>Pressure: [round(pressure, 0.1)] kPa</span>")
+		to_chat(src, "<span class='notice'>Pressure: [round(pressure, 0.01)] kPa</span>")
 	else
-		to_chat(src, "<span class='warning'>Pressure: [round(pressure, 0.1)] kPa</span>")
+		to_chat(src, "<span class='warning'>Pressure: [round(pressure, 0.01)] kPa</span>")
 	if(total_moles)
-		var/o2_concentration = environment[GAS_OXYGEN] / total_moles
-		var/n2_concentration = environment[GAS_NITROGEN] / total_moles
-		var/co2_concentration = environment[GAS_CARBON] / total_moles
-		var/plasma_concentration = environment[GAS_PLASMA] / total_moles
+		for(var/g in environment.gas)
+			var/datum/gas/gas = XGM.gases[g]
+			var/is_safe = gas.is_human_safe(environment[g], environment)
+			to_chat(src, "<span class='[is_safe ? "notice" : "warning"]'>[XGM.name[g]]: [round(environment[g] / total_moles * 100)]% ([round(environment.molar_density(g) * CELL_VOLUME, 0.01)] moles)</span>")
 
-		var/unknown_concentration =  1 - (o2_concentration + n2_concentration + co2_concentration + plasma_concentration)
-		if(abs(n2_concentration - N2STANDARD) < 20)
-			to_chat(src, "<span class='notice'>Nitrogen: [round(n2_concentration * 100)]% ([round(environment.molar_density(GAS_NITROGEN) * CELL_VOLUME, 0.01)] moles)</span>")
-		else
-			to_chat(src, "<span class='warning'>Nitrogen: [round(n2_concentration * 100)]% ([round(environment.molar_density(GAS_NITROGEN) * CELL_VOLUME, 0.01)] moles)</span>")
-
-		if(abs(o2_concentration - O2STANDARD) < 2)
-			to_chat(src, "<span class='notice'>Oxygen: [round(o2_concentration * 100)]% ([round(environment.molar_density(GAS_OXYGEN) * CELL_VOLUME, 0.01)] moles)</span>")
-		else
-			to_chat(src, "<span class='warning'>Oxygen: [round(o2_concentration * 100)]% ([round(environment.molar_density(GAS_OXYGEN) * CELL_VOLUME, 0.01)] moles)</span>")
-
-		if(co2_concentration > 0.01)
-			to_chat(src, "<span class='warning'>CO2: [round(co2_concentration * 100)]% ([round(environment.molar_density(GAS_CARBON) * CELL_VOLUME, 0.01)] moles)</span>")
-		else
-			to_chat(src, "<span class='notice'>CO2: [round(co2_concentration * 100)]% ([round(environment.molar_density(GAS_CARBON) * CELL_VOLUME, 0.01)] moles)</span>")
-
-		if(plasma_concentration > 0.01)
-			to_chat(src, "<span class='warning'>Plasma: [round(plasma_concentration * 100)]% ([round(environment.molar_density(GAS_PLASMA) * CELL_VOLUME, 0.01)] moles)</span>")
-
-		if(unknown_concentration > 0.01)
-			to_chat(src, "<span class='warning'>Unknown: [round(unknown_concentration * 100)]% ([round(unknown_concentration * total_moles / tiles, 0.01)] moles)</span>")
-
-		to_chat(src, "<span class='notice'>Temperature: [round(environment.temperature - T0C, 0.1)]&deg;C</span>")
-		to_chat(src, "<span class='notice'>Heat Capacity: [round(environment.heat_capacity() / tiles, 0.1)]</span>")
+		to_chat(src, "<span class='notice'>Temperature: [round(environment.temperature - T0C, 0.01)]&deg;C</span>")
+		to_chat(src, "<span class='notice'>Heat Capacity: [round(environment.heat_capacity() / tiles, 0.01)]</span>")
 
 
 /mob/dead/observer/verb/toggle_darkness()
@@ -809,6 +801,9 @@ This is the proc mobs get to turn into a ghost. Forked from ghostize due to comp
 	var/ghosts_can_write
 	var/datum/faction/cult/narsie/C = find_active_faction_by_type(/datum/faction/cult/narsie)
 	if(C && C.members.len > config.cult_ghostwriter_req_cultists)
+		ghosts_can_write = 1
+
+	if (veil_thickness >= CULT_ACT_III)
 		ghosts_can_write = 1
 
 	if(!ghosts_can_write)
@@ -1025,7 +1020,7 @@ This is the proc mobs get to turn into a ghost. Forked from ghostize due to comp
 /mob/dead/observer/pointed(atom/A as mob|obj|turf in view())
 	if(!..())
 		return 0
-	usr.visible_message("<span class='deadsay'><b>[src]</b> points to [A]</span>")
+	usr.visible_message("<span class='deadsay'><b>[src]</b> points to [A]</span>.")
 	return 1
 
 /mob/dead/observer/Login()
@@ -1088,3 +1083,30 @@ This is the proc mobs get to turn into a ghost. Forked from ghostize due to comp
 		return
 
 	paiController.recruitWindow(src)
+
+// -- Require at least 2 players to start.
+
+// Global variable on whether an arena is being created or not
+var/creating_arena = FALSE
+
+/mob/dead/observer/verb/request_bomberman()
+	set name = "Request a bomberman arena"
+	set category = "Ghost"
+	set desc = "Create a bomberman arena for other observers and dead players."
+
+	if (ticker && ticker.current_state != GAME_STATE_PLAYING)
+		to_chat(src, "<span class ='notice'>You can't use this verb before the game has started.</span>")
+		return
+
+	if (arenas.len)
+		to_chat(src, "<span class ='notice'>There are already bomberman arenas! Use the Find Arenas verb to jump to them.</span>")
+		return
+
+	to_chat(src, "<span class='notice'>Pooling other ghosts for a bomberman arena...</span>")
+	if (!creating_arena)
+		creating_arena = TRUE
+		new /datum/bomberman_arena(locate(250, 250, 2), pick("15x13 (2 players)","15x15 (4 players)","39x23 (10 players)"), src)
+		if (!arenas.len) // Someone hit the cancel option
+			creating_arena = FALSE
+		return
+	to_chat(src, "<span class='notice'>There were unfortunatly no available arenas.</span>")

@@ -422,6 +422,8 @@
 		if(coverlocked && !(stat & MAINT))
 			to_chat(user, "<span class='warning'>The cover is locked and cannot be opened.</span>")
 			return
+		else if (wiresexposed)
+			to_chat(user, "<span class='warning'>Unexpose the wires first!</span>")
 		else
 			opened = 1
 			update_icon()
@@ -448,7 +450,7 @@
 					"You insert the power cell.")
 				chargecount = 0
 				update_icon()
-	else if	(isscrewdriver(W))	// haxing
+	else if	(W.is_screwdriver(user))	// haxing
 		if(opened)
 			if (cell)
 				to_chat(user, "<span class='warning'>Close the APC first.</span>")//Less hints more mystery!
@@ -469,19 +471,18 @@
 					to_chat(user, "<span class='warning'>There is nothing to secure.</span>")
 					return
 				update_icon()
-		else if(emagged)
-			to_chat(user, "The interface is broken.")
-		else if(has_electronics == 2)
-			wiresexposed = !wiresexposed
-			to_chat(user, "The wires have been [wiresexposed ? "exposed" : "unexposed"].")
-			update_icon()
 		else
-			to_chat(user, "<span class='warning'>You open the panel and find nothing inside.</span>")
-			return
+			if(has_electronics == 2 && !(stat & BROKEN))
+				wiresexposed = !wiresexposed
+				to_chat(user, "The wires have been [wiresexposed ? "exposed" : "unexposed"].")
+				update_icon()
+			else
+				to_chat(user, "<span class='warning'>You open the panel and find nothing inside.</span>")
+				return
 
 	else if (istype(W, /obj/item/weapon/card/id)||istype(W, /obj/item/device/pda))			// trying to unlock the interface with an ID card
 		if(emagged)
-			to_chat(user, "The interface is broken.")
+			to_chat(user, "The lock seems broken.")
 		else if(opened)
 			to_chat(user, "You must close the cover to swipe an ID card.")
 		else if(wiresexposed)
@@ -493,6 +494,7 @@
 				locked = !locked
 				to_chat(user, "You [ locked ? "lock" : "unlock"] the APC interface.")
 				update_icon()
+				nanomanager.update_uis(src)
 			else
 				to_chat(user, "<span class='warning'>Access denied.</span>")
 	else if (istype(W, /obj/item/weapon/card/emag) && !(emagged || malfhack))		// trying to unlock with an emag card
@@ -510,6 +512,7 @@
 					locked = 0
 					to_chat(user, "You emag the APC interface.")
 					update_icon()
+					nanomanager.update_uis(src)
 				else
 					to_chat(user, "You fail to [ locked ? "unlock" : "lock"] the APC interface.")
 	else if (istype(W, /obj/item/stack/cable_coil) && !terminal && opened && has_electronics != 2)
@@ -614,10 +617,6 @@
 		else
 			if (istype(user, /mob/living/silicon))
 				return src.attack_hand(user)
-			if (!opened && wiresexposed && \
-				(istype(W, /obj/item/device/multitool) || \
-				iswirecutter(W) || istype(W, /obj/item/device/assembly/signaler)))
-				return src.attack_hand(user)
 			/*user.visible_message("<span class='warning'>The [src.name] has been hit with the [W.name] by [user.name]!</span>", \
 				"<span class='warning'>You hit the [src.name] with your [W.name]!</span>", \
 				"You hear bang")*/
@@ -626,12 +625,7 @@
 // attack with hand - remove cell (if cover open) or interact with the APC
 
 /obj/machinery/power/apc/attack_hand(mob/user)
-//	if (!can_use(user)) This already gets called in interact() and in topic()
-//		return
-	if(!user)
-		return
-	if(wiresexposed && !issilicon(user))
-		to_chat(user, "Unexpose the wires first!")
+	if (!can_use(user))
 		return
 	if(!isobserver(user))
 		src.add_fingerprint(user)
@@ -669,12 +663,13 @@
 
 	var/allcut = wires.IsAllCut()
 
-	if(beenhit >= pick(3, 4) && wiresexposed != 1)
+	if(beenhit >= pick(3, 4) && (!wiresexposed && !opened))
+		beenhit = 0
 		wiresexposed = 1
 		src.update_icon()
 		src.visible_message("<span class='warning'>The [src.name]'s cover flies open, exposing the wires!</span>")
 
-	else if(wiresexposed == 1 && allcut == 0)
+	else if((wiresexposed || opened) && allcut == 0)
 		wires.CutAll()
 		src.update_icon()
 		src.visible_message("<span class='warning'>The [src.name]'s wires are shredded!</span>")
@@ -810,6 +805,8 @@
 
 
 /obj/machinery/power/apc/proc/can_use(mob/user as mob, var/loud = 0) //used by attack_hand() and Topic()
+	if(!user)
+		return 0
 	if (user.stat && !isobserver(user))
 		to_chat(user, "<span class='warning'>You must be conscious to use this [src]!</span>")
 		return 0
@@ -917,12 +914,12 @@
 		update()
 
 	else if (href_list["overload"])
-		if(istype(usr, /mob/living/silicon))
+		if(istype(usr, /mob/living/silicon) || isAdminGhost(usr))
 			src.overload_lighting()
 
 	else if (href_list["malfhack"])
 		var/mob/living/silicon/ai/malfai = usr
-		var/datum/faction/malf/M = find_active_faction_by_member(malfai.mind.GetRole(MALF))
+		var/datum/faction/malf/M = find_active_faction_by_type(/datum/faction/malf)
 		if(get_malf_status(malfai)==1)
 			if (malfai.malfhacking)
 				to_chat(malfai, "You are already hacking an APC.")
@@ -970,7 +967,7 @@
 /obj/machinery/power/apc/proc/toggle_breaker()
 	operating = !operating
 	if(malfai)
-		var/datum/faction/malf/M = find_active_faction_by_member(malfai.mind.GetRole(MALF))
+		var/datum/faction/malf/M = find_active_faction_by_type(/datum/faction/malf)
 		if(M && STATION_Z == z)
 			operating ? M.apcs++ : M.apcs--
 
@@ -1300,11 +1297,13 @@ obj/machinery/power/apc/proc/autoset(var/val, var/on)
 
 /obj/machinery/power/apc/proc/set_broken()
 	if(malfai && operating)
-		var/datum/faction/malf/M = find_active_faction_by_member(malfai.mind.GetRole(MALF))
+		var/datum/faction/malf/M = find_active_faction_by_type(/datum/faction/malf)
 		if(M && STATION_Z == z)
 			M.apcs--
 	stat |= BROKEN
 	operating = 0
+	wiresexposed = 0
+	opened = 0
 	if(occupant)
 		malfvacate(1)
 	update_icon()
@@ -1329,7 +1328,7 @@ obj/machinery/power/apc/proc/autoset(var/val, var/on)
 	if(this_area.areaapc == src)
 		this_area.remove_apc(src)
 		if(malfai && operating)
-			var/datum/faction/malf/M = find_active_faction_by_member(malfai.mind.GetRole(MALF))
+			var/datum/faction/malf/M = find_active_faction_by_type(/datum/faction/malf)
 			if (M && STATION_Z == z)
 				M.apcs--
 		this_area.power_light = 0

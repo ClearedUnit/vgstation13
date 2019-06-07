@@ -69,6 +69,8 @@
 	desc = "A wrench intended to be wrenchier than other wrenches. It's the wrenchiest."
 	icon_state = "socket_wrench"
 	w_class = W_CLASS_LARGE //big shit, to balance its power
+	force = 15.0
+	throwforce = 12.0
 
 /*
  * Screwdriver
@@ -161,6 +163,9 @@
 			to_chat(usr, "<span class='warning'>You cannot do that.</span>")
 	else
 		..()
+
+/obj/item/weapon/screwdriver/is_screwdriver(var/mob/user)
+	return TRUE
 /*
  * Wirecutters
  */
@@ -193,7 +198,7 @@
 		item_state = "cutters_yellow"
 
 /obj/item/weapon/wirecutters/attack(mob/living/carbon/C as mob, mob/user as mob)
-	if((iscarbon(C)) && (C.handcuffed) && (istype(C.handcuffed, /obj/item/weapon/handcuffs/cable)))
+	if((iscarbon(C)) && (C.handcuffed) && (istype(C.handcuffed, /obj/item/weapon/handcuffs/cable)) && user.a_intent!=I_HURT)
 		usr.visible_message("\The [user] cuts \the [C]'s [C.handcuffed.name] with \the [src]!",\
 		"You cut \the [C]'s [C.handcuffed.name] with \the [src]!",\
 		"You hear cable being cut.")
@@ -480,7 +485,8 @@
 /obj/item/weapon/weldingtool/proc/eyecheck(mob/user as mob)
 	if(!iscarbon(user))
 		return 1
-	var/safety = user:eyecheck()
+	var/mob/living/carbon/C = user //eyecheck is living-level
+	var/safety = C.eyecheck()
 	if(istype(user, /mob/living/carbon/human))
 		var/mob/living/carbon/human/H = user
 		var/datum/organ/internal/eyes/E = H.internal_organs_by_name["eyes"]
@@ -489,7 +495,7 @@
 		if(E.welding_proof)
 			user.simple_message("<span class='notice'>Your eyelenses darken to accommodate for the welder's glow.</span>")
 			return
-		if(safety < 2 && eye_damaging)
+		if(safety < 2 && eye_damaging && !(user.sdisabilities & BLIND))
 			switch(safety)
 				if(1)
 					user.simple_message("<span class='warning'>Your eyes sting a little.</span>",\
@@ -680,17 +686,17 @@
 	origin_tech = Tc_COMBAT + "=2"
 	var/open = 0
 
-	New()
-		..()
-		update_icon()
-
+/obj/item/weapon/conversion_kit/New()
+	..()
 	update_icon()
-		icon_state = "[initial(icon_state)]_[open]"
 
-	attack_self(mob/user as mob)
-		open = !open
-		to_chat(user, "<span class='notice'>You [open?"open" : "close"] the conversion kit.</span>")
-		update_icon()
+/obj/item/weapon/conversion_kit/update_icon()
+	icon_state = "[initial(icon_state)]_[open]"
+
+/obj/item/weapon/conversion_kit/attack_self(mob/user as mob)
+	open = !open
+	to_chat(user, "<span class='notice'>You [open?"open" : "close"] the conversion kit.</span>")
+	update_icon()
 
 /*
  * Soldering Iron
@@ -746,7 +752,7 @@
 			user.simple_message("<span class='warning'>The mixture is rejected by the tool.</span>",
 				"<span class='warning'>The tool isn't THAT thirsty.</span>")
 			return
-		if(!G.reagents.has_any_reagents(list(SACID, FORMIC_ACID), 1))
+		if(!G.reagents.has_any_reagents(SACIDS, 1))
 			user.simple_message("<span class='warning'>The tool is not compatible with that.</span>",
 				"<span class='warning'>The tool won't drink that.</span>")
 			return

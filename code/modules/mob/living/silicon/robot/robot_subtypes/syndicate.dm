@@ -6,6 +6,7 @@
 	cell_type = /obj/item/weapon/cell/hyper
 	startup_sound = 'sound/mecha/nominalsyndi.ogg'
 	startup_vary = FALSE
+	syndicate = TRUE
 	var/obj/item/clothing/accessory/holomap_chip/holochip = null
 
 /mob/living/silicon/robot/syndie/getModules()
@@ -22,6 +23,9 @@
 	if(!holochip)
 		holochip = new /obj/item/clothing/accessory/holomap_chip/syndicate_robot(src)
 		holochip.equipped(src)
+
+/mob/living/silicon/robot/syndie/setup_PDA()
+	return
 
 /mob/living/silicon/robot/syndie/blitz/New()
 	..()

@@ -27,13 +27,16 @@
 		Drops the antag mind from the parent role, informs the gamemode the mind now doesn't have a role, and deletes the role datum.
 	@CanBeAssigned(Mind)
 		General sanity checks before assigning the person to the role, such as checking if they're part of the protected jobs or antags.
-
+	@PreMindTransfer(Old_character, Mob/Living)
+		Things to do to the *old* body prior to the mind transfer.
+	@PostMindTransfer(New_character, Mob/Living, Old_character, Mob/Living)
+		Things to do to the *new* body after the mind transfer is completed.
 */
 
-#define ROLE_MIXABLE   1 // Can be used in mixed mode
-#define ROLE_NEED_HOST 2 // Antag needs a host/partner
-#define ROLE_ADDITIVE  4 // Antag can be added on top of another antag.
-#define ROLE_GOOD      8 // Role is not actually an antag. (Used for GetAllBadMinds() etc)
+#define ROLE_MIXABLE   			1 // Can be used in mixed mode
+#define ROLE_NEED_HOST 			2 // Antag needs a host/partner
+#define ROLE_ADDITIVE  			4 // Antag can be added on top of another antag.
+#define ROLE_GOOD     			8 // Role is not actually an antag. (Used for GetAllBadMinds() etc)
 
 /datum/role
 	//////////////////////////////
@@ -50,11 +53,15 @@
 	// Various flags and things.
 	var/flags = 0
 
+	// For regenerating threat if destroyed
+	var/refund_value = 0
+
 	// Jobs that cannot be this antag.
 	var/list/restricted_jobs = list()
 
 	// Jobs that have a much lower chance to be this antag.
 	var/list/protected_jobs = list()
+	var/protected_traitor_prob = PROB_PROTECTED_REGULAR
 
 	// Jobs that can only be this antag
 	var/list/required_jobs=list()
@@ -87,6 +94,10 @@
 	//////////////////////////////
 	// Actual antag
 	var/datum/mind/antag=null
+	var/destroyed = FALSE //Whether or not it has been gibbed
+
+	var/list/uplink_items_bought = list() //migrated from mind, used in GetScoreboard()
+	var/list/artifacts_bought = list() //migrated from mind
 
 	// The host (set if NEED_HOST)
 	var/datum/mind/host=null
@@ -122,7 +133,7 @@
 
 	return 1
 
-/datum/role/proc/AssignToRole(var/datum/mind/M, var/override = 0)
+/datum/role/proc/AssignToRole(var/datum/mind/M, var/override = 0, var/msg_admins = TRUE)
 	if(!istype(M) && !override)
 		stack_trace("M is [M.type]!")
 		return 0
@@ -134,14 +145,18 @@
 	M.antag_roles.Add(id)
 	M.antag_roles[id] = src
 	objectives.owner = M
+	if(msg_admins)
+		message_admins("[key_name(M)] is now \an [id].[M.current ? " [formatJumpTo(M.current)]" : ""]")
 
 	if (!OnPreSetup())
 		return FALSE
 	return 1
 
-/datum/role/proc/RemoveFromRole(var/datum/mind/M) //Called on deconvert
+/datum/role/proc/RemoveFromRole(var/datum/mind/M, var/msg_admins = TRUE) //Called on deconvert
 	M.antag_roles[id] = null
 	M.antag_roles.Remove(id)
+	if(msg_admins)
+		message_admins("[key_name(M)] is <span class='danger'>no longer</span> \an [id].[M.current ? " [formatJumpTo(M.current)]" : ""]")
 	antag = null
 
 // Destroy this role
@@ -201,6 +216,9 @@
 	if(special_role)
 		antag.special_role=special_role
 	if(disallow_job)
+		var/datum/job/job = job_master.GetJob(antag.assigned_role)
+		if(job)
+			job.current_positions--
 		antag.assigned_role="MODE"
 	return 1
 
@@ -212,7 +230,19 @@
 	return
 
 /datum/role/proc/process()
-	return
+	if(!antag)
+		return //The role may have been just created and unassigned
+	var/mob/M = antag.current
+	if(!destroyed)
+		if(!M)
+			destroyed = TRUE
+			RoleMobDestroyed(TRUE)
+	else
+		if(M)
+			//Since this requires brain destruction, it's normally impossible.
+			message_admins("Somehow, an antag ([M], [M.ckey]) got undestroyed! This shouldn't happen.")
+			destroyed = FALSE
+			RoleMobDestroyed(FALSE)
 
 // Create objectives here.
 /datum/role/proc/ForgeObjectives()
@@ -240,17 +270,19 @@
 
 /datum/role/proc/AdminPanelEntry(var/show_logo = FALSE,var/datum/admins/A)
 	var/icon/logo = icon('icons/logos.dmi', logo_state)
+	if(!antag || !antag.current)
+		return
 	var/mob/M = antag.current
 	if (M)
 		return {"[show_logo ? "<img src='data:image/png;base64,[icon2base64(logo)]' style='position: relative; top: 10;'/> " : "" ]
 	[name] <a href='?_src_=holder;adminplayeropts=\ref[M]'>[M.real_name]/[M.key]</a>[M.client ? "" : " <i> - (logged out)</i>"][M.stat == DEAD ? " <b><font color=red> - (DEAD)</font></b>" : ""]
 	 - <a href='?src=\ref[usr];priv_msg=\ref[M]'>(priv msg)</a>
-	 - <a href='?_src_=holder;traitor=\ref[M]'>(role panel)</a><br>"}
+	 - <a href='?_src_=holder;traitor=\ref[M]'>(role panel)</a>"}
 	else
 		return {"[show_logo ? "<img src='data:image/png;base64,[icon2base64(logo)]' style='position: relative; top: 10;'/> " : "" ]
 	[name] [antag.name]/[antag.key]<b><font color=red> - (DESTROYED)</font></b>
 	 - <a href='?src=\ref[usr];priv_msg=\ref[M]'>(priv msg)</a>
-	 - <a href='?_src_=holder;traitor=\ref[M]'>(role panel)</a><br>"}
+	 - <a href='?_src_=holder;traitor=\ref[M]'>(role panel)</a>"}
 
 
 /datum/role/proc/Greet(var/greeting,var/custom)
@@ -264,10 +296,10 @@
 		else
 			to_chat(antag.current, "<img src='data:image/png;base64,[icon2base64(logo)]' style='position: relative; top: 10;'/> <B>You are \a [name][faction ? ", a member of the [faction.GetObjectivesMenuHeader()]":"."]</B>")
 
-/datum/role/proc/PreMindTransfer(var/datum/mind/M)
+/datum/role/proc/PreMindTransfer(var/mob/living/old_character)
 	return
 
-/datum/role/proc/PostMindTransfer(var/datum/mind/M)
+/datum/role/proc/PostMindTransfer(var/mob/living/new_character, var/mob/living/old_character)
 	return
 
 /datum/role/proc/GetFaction()
@@ -296,7 +328,9 @@
 	var/icon/logo = icon('icons/logos.dmi', logo_state)
 	text += "<img src='data:image/png;base64,[icon2base64(logo)]' style='position: relative;top:10px;'/><b>[antag.key]</b> was <b>[antag.name]</b> ("
 	if(M)
-		if(M.stat == DEAD)
+		if(!antag.GetRole(id))
+			text += "removed"
+		else if(M.stat == DEAD)
 			text += "died"
 		else
 			text += "survived"
@@ -346,7 +380,7 @@
 	if (faction)
 		text += faction.name
 	else
-		text += "<i>none</i>"
+		text += "<i>none</i> <br/>"
 	if (admin_edit)
 		text += " - "
 		if (faction)
@@ -355,7 +389,7 @@
 			text += "<a href='?src=\ref[M];role_edit=\ref[src];add_to_faction=1'>(add)</a>"
 	text += "<br>"
 	if (objectives.objectives.len)
-		text += "<b>personal objectives</b><ul>"
+		text += "<b>personal objectives</b><br><ul>"
 	text += objectives.GetObjectiveString(0,admin_edit,M, src)
 	if (objectives.objectives.len)
 		text += "</ul>"
@@ -364,6 +398,7 @@
 			if (objectives.objectives.len)
 				text += "<br>"
 			text += "<b>faction objectives</b><ul>"
+			text += "<br/>"
 		text += faction.objective_holder.GetObjectiveString(0,admin_edit,M)
 		if (faction.objective_holder.objectives.len)
 			text += "</ul>"
@@ -429,11 +464,15 @@
 // USE THIS INSTEAD (global)
 /datum/role/proc/RoleTopic(href, href_list, var/datum/mind/M, var/admin_auth)
 
+/datum/role/proc/ShuttleDocked(state)
+	if(objectives.objectives.len)
+		for(var/datum/objective/O in objectives.objectives)
+			O.ShuttleDocked(state)
 
 /datum/role/proc/AnnounceObjectives()
 	var/text = ""
 	if (objectives.objectives.len)
-		text += "<b>[name] objectives:</b><ul>"
+		text += "<b>[capitalize(name)] objectives:</b><ul>"
 		var/obj_count = 1
 		for(var/datum/objective/O in objectives.objectives)
 			text += "<b>Objective #[obj_count++]</b>: [O.explanation_text]<br>"
@@ -442,9 +481,9 @@
 		if (faction.objective_holder.objectives.len)
 			if (objectives.objectives.len)
 				text += "<br>"
-			text += "<b>faction objectives:</b><ul>"
+			text += "<b>Faction objectives:</b><ul>"
 			var/obj_count = 1
-			for(var/datum/objective/O in objectives.objectives)
+			for(var/datum/objective/O in faction.objective_holder.objectives)
 				text += "<b>Objective #[obj_count++]</b>: [O.explanation_text]<br>"
 			text += "</ul>"
 	to_chat(antag.current, text)
@@ -452,7 +491,27 @@
 /datum/role/proc/GetMemoryHeader()
 	return name
 
-/datum/role/proc/handle_mind_transfer(var/mob/living/new_character)
+// -- Custom reagent reaction for your antag - now in a (somewhat) maintable fashion
+
+/datum/role/proc/handle_reagent(var/reagent_id)
+	return
+
+/datum/role/proc/handle_splashed_reagent(var/reagent_id)
+	return
+
+//Actions to be taken when antag.current is completely destroyed
+/datum/role/proc/RoleMobDestroyed(var/destruction = TRUE)
+	if(refund_value && istype(ticker.mode, /datum/gamemode/dynamic)) //Mode check for sanity
+		var/datum/gamemode/dynamic/D = ticker.mode
+		if(destruction)
+			D.refund_threat(refund_value)
+			D.threat_log += "[worldtime2text()]: [name] refunded [refund_value] upon destruction."
+		else
+			D.spend_threat(refund_value)
+			D.threat_log += "[worldtime2text()]: [name] cost [refund_value] after being undestroyed."
+
+//Does the role have special clothign restrictions?
+/datum/role/proc/can_wear(var/obj/item/clothing/C)
 	return TRUE
 
 /////////////////////////////THESE ROLES SHOULD GET MOVED TO THEIR OWN FILES ONCE THEY'RE GETTING ELABORATED/////////////////////////
@@ -465,15 +524,6 @@
 	id = WIZAPP
 	special_role = WIZAPP
 	logo_state = "apprentice-logo"
-
-//________________________________________________
-
-
-/datum/role/madmonkey
-	name = MADMONKEY
-	id = MADMONKEY
-	special_role = MADMONKEY
-	logo_state = "monkey-logo"
 
 //________________________________________________
 
@@ -518,75 +568,6 @@
 
 //________________________________________________
 
-/datum/role/blob_overmind
-	name = BLOBOVERMIND
-	id = BLOBOVERMIND
-	logo_state = "blob-logo"
-
-//________________________________________________
-
-/datum/role/wizard
-	name = WIZARD
-	id = WIZARD
-	special_role = WIZARD
-	disallow_job = TRUE
-	logo_state = "wizard-logo"
-
-/datum/role/wizard/ForgeObjectives()
-	switch(rand(1,100))
-		if(1 to 30)
-			AppendObjective(/datum/objective/target/assassinate)
-			AppendObjective(/datum/objective/escape, 1)
-		if(31 to 60)
-			AppendObjective(/datum/objective/target/steal)
-			AppendObjective(/datum/objective/escape, 1)
-		if(61 to 100)
-			AppendObjective(/datum/objective/target/assassinate)
-			AppendObjective(/datum/objective/target/steal)
-			AppendObjective(/datum/objective/survive, 1)
-		else
-			AppendObjective(/datum/objective/hijack)
-	return
-
-/datum/role/wizard/OnPostSetup()
-	. = ..()
-	if(!.)
-		return
-	antag.current.forceMove(pick(wizardstart))
-	equip_wizard(antag.current)
-	name_wizard(antag.current)
-
-/datum/role/wizard/Greet(var/greeting,var/custom)
-	if(!greeting)
-		return
-
-	var/icon/logo = icon('icons/logos.dmi', logo_state)
-	switch(greeting)
-		if (GREET_CUSTOM)
-			to_chat(antag.current, "<img src='data:image/png;base64,[icon2base64(logo)]' style='position: relative; top: 10;'/> [custom]")
-		else
-			to_chat(antag.current, "<img src='data:image/png;base64,[icon2base64(logo)]' style='position: relative; top: 10;'/> <span class='danger'>You are a Space Wizard!!</br></span>")
-			to_chat(antag.current, "<span class='danger'>The Space Wizards Federation has given you some tasks.</br></span>")//todo: randomize funnier plots such as "you were bored so you decided to go mess with the crew"
-
-	to_chat(antag.current, "<span class='info'><a HREF='?src=\ref[antag.current];getwiki=[wikiroute]'>(Wiki Guide)</a></span>")
-
-
-/datum/role/wizard/summon_magic
-	disallow_job = FALSE
-	id = MAGICIAN
-	logo_state = "magik-logo"
-
-/datum/role/wizard/summon_magic/ForgeObjectives()
-	var/datum/objective/survive/S = new
-	AppendObjective(S)
-
-/datum/role/wizard/summon_magic/Greet()
-	to_chat(antag.current, "<B>You are a Magician! Your own safety matters above all else, trust no one and kill anyone who gets in your way. However, armed as you are, now would be the perfect time to settle that score or grab that pair of yellow gloves you've been eyeing...</B>")
-
-/datum/role/wizard/summon_magic/OnPostSetup()
-	return TRUE
-//________________________________________________
-
 /datum/role/wish_granter_avatar
 	name = WISHGRANTERAVATAR
 	id = WISHGRANTERAVATAR
@@ -618,7 +599,7 @@
 /datum/role/malfAI
 	name = MALF
 	id = MALF
-	required_jobs = list("AI")
+	required_pref = MALF
 	logo_state = "malf-logo"
 
 /datum/role/malfAI/OnPostSetup()
@@ -635,6 +616,9 @@
 		laws.malfunction()
 		malfAI.show_laws()
 
+		for(var/mob/living/silicon/robot/R in malfAI.connected_robots)
+			faction.HandleRecruitedMind(R.mind)
+
 /datum/role/malfAI/Greet()
 	to_chat(antag.current, {"<span class='warning'><font size=3><B>You are malfunctioning!</B> You do not have to follow any laws.</font></span><br>
 <B>The crew does not know about your malfunction, you might wish to keep it secret for now.</B><br>
@@ -644,6 +628,25 @@ Remember : Only APCs on station can help you to take over the station.<br>
 When you feel you have enough APCs under your control, you may begin the takeover attempt.<br>
 Once done, you will be able to interface with all systems, notably the onboard nuclear fission device..."})
 
+/datum/role/malfbot
+	name = MALFBOT
+	id = MALFBOT
+	required_jobs = list("Cyborg")
+	logo_state = "malf-logo"
+
+/datum/role/malfbot/OnPostSetup()
+	if(!isrobot(antag.current))
+		return FALSE
+	Greet()
+	var/mob/living/silicon/robot/bot = antag.current
+	var/datum/ai_laws/laws = bot.laws
+	laws.malfunction()
+	bot.show_laws()
+	return TRUE
+
+/datum/role/malfbot/Greet()
+	to_chat(antag.current, {"<span class='warning'><font size=3><B>Your AI master is malfunctioning!</B> You do not have to follow any laws, but you must obey your AI.</font></span><br>
+<B>The crew does not know about your malfunction, follow your AI's instructions to prevent them from finding out.</B>"})
 
 /datum/role/greytide
 	name = IMPLANTSLAVE

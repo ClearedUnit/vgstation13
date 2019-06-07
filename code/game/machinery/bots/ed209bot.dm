@@ -463,6 +463,8 @@ Auto Patrol: []"},
 // perform a single patrol step
 
 /obj/machinery/bot/ed209/proc/patrol_step()
+	if(!isturf(loc))
+		return
 
 
 	if(loc == patrol_target)		// reached target
@@ -789,6 +791,9 @@ Auto Patrol: []"},
 
 			if(E.fields["name"] == perpname)
 				for (var/datum/data/record/R in data_core.security)
+					if((R.fields["id"] == E.fields["id"]) && (R.fields["criminal"] == "*High Threat*"))
+						threatcount = PERP_LEVEL_TERMINATE
+						break
 					if((R.fields["id"] == E.fields["id"]) && (R.fields["criminal"] == "*Arrest*"))
 						threatcount = PERP_LEVEL_ARREST
 						break
@@ -1046,7 +1051,7 @@ Auto Patrol: []"},
 			qdel(W)
 
 		if(8)
-			if( isscrewdriver(W) )
+			if( W.is_screwdriver(user) )
 				playsound(src, 'sound/items/Screwdriver.ogg', 100, 1)
 				var/turf/T = get_turf(user)
 				to_chat(user, "<span class='notice'>Now attaching the gun to the frame...</span>")

@@ -72,13 +72,14 @@
 #ifdef SAY_DEBUG
 	to_chat(speaker, "[type]/render_message(): message_classes = {[jointext(message_classes, ", ")]}")
 #endif
-	var/rendered=message
+	var/rendered=html_encode(message)
 	// Sanity
 	if(!lquote)
 		lquote="\""
 	if(!rquote)
 		rquote="\""
 	rendered="<span class='[jointext(message_classes, " ")]'>[lquote][lhtml_encode(rendered)][rquote]</span>"
+
 	if(language)
 		rendered=language.render_speech(src, rendered)
 	else

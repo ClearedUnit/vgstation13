@@ -8,6 +8,7 @@
 	penetration = 5 //bullets can now by default move through up to 5 windows, or 2 reinforced windows, or 1 plasma window. (reinforced plasma windows still have enough dampening to completely block them)
 	flag = "bullet"
 	fire_sound = 'sound/weapons/Gunshot_smg.ogg'
+	projectile_speed = 0.5
 	var/embed = 1
 	var/embed_message = TRUE
 
@@ -428,6 +429,13 @@
 	if(istype(atarget, /mob/living) && damage == 200)
 		var/mob/living/M = atarget
 		M.gib()
+	else if(istype(atarget, /obj/machinery/singularity/narsie) && blessed && damage == 200) //MINE IS THE ROD THAT SHALL PIERCE THE HEAVENS
+		var/obj/machinery/singularity/narsie/N = atarget
+		if(!N.wounded)
+			N.visible_message("<span class = 'danger'>\The [src] strikes \the [N], wounding them. This god can bleed!</span>", range = 20)
+		N.wounded++
+		bullet_die()
+		return
 	else
 		..()
 
@@ -443,11 +451,17 @@
 
 /obj/item/projectile/bullet/APS/OnDeath()
 	var/turf/T = get_turf(src)
-	new /obj/item/stack/rods(T)
+	if(blessed)
+		new /obj/item/weapon/nullrod(T)
+	else
+		new /obj/item/stack/rods(T)
+
+/obj/item/projectile/bullet/APS/cultify()
+	return
 
 /obj/item/projectile/bullet/stinger
 	name = "alien stinger"
-	damage = 5
+	damage = 10
 	damage_type = TOX
 	flag = "bio"
 	fire_sound = 'sound/weapons/hivehand.ogg'
@@ -861,6 +875,7 @@
 	fire_sound = 'sound/items/syringeproj.ogg'
 	travel_range = 6
 	custom_impact = TRUE
+	decay_type = /obj/item/weapon/reagent_containers/syringe/broken
 	var/capacity = 15
 	var/stealthy = FALSE
 
@@ -869,6 +884,7 @@
 	if(source_syringe)
 		create_reagents(source_syringe.reagents.total_volume)
 		source_syringe.reagents.trans_to(src, source_syringe.reagents.total_volume)
+		name = source_syringe.name
 	else
 		create_reagents(capacity)
 

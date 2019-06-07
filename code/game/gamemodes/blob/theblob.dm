@@ -45,7 +45,7 @@ var/list/blob_overminds = list()
 
 /obj/effect/blob
 	name = "blob"
-	icon = 'icons/mob/blob/blob_64x64.dmi'
+	icon = 'icons/mob/blob/blob_64x64.dmi'//HALLOWEEN
 	icon_state = "center"
 	luminosity = 2
 	desc = "A part of a blob."
@@ -84,8 +84,10 @@ var/list/blob_overminds = list()
 	return
 
 
-/obj/effect/blob/New(turf/loc,newlook = "new",no_morph = 0)
-	looks = newlook
+//obj/effect/blob/New(turf/loc,newlook = "new",no_morph = 0) HALLOWEEN
+/obj/effect/blob/New(turf/loc,newlook = null,no_morph = 0)
+	if(newlook)
+		looks = newlook
 	update_looks()
 	blobs += src
 	src.dir = pick(cardinal)
@@ -106,7 +108,7 @@ var/list/blob_overminds = list()
 
 	..(loc)
 	for(var/atom/A in loc)
-		A.blob_act()
+		A.blob_act(0,src)
 	return
 
 
@@ -121,7 +123,7 @@ var/list/blob_overminds = list()
 		for(var/obj/effect/blob/B in orange(loc,1))
 			B.update_icon()
 			if(!spawning)
-				anim(target = B.loc, a_icon = icon, flick_anim = "connect_die", sleeptime = 50, direction = get_dir(B,src), lay = layer+0.3, offX = -16, offY = -16, col = "red")
+				anim(target = B.loc, a_icon = icon, flick_anim = "connect_die", sleeptime = 50, direction = get_dir(B,src), plane = src.plane, lay = layer+0.3, offX = -16, offY = -16, col = "red")
 
 	if(!manual_remove)
 		for(var/obj/effect/blob/core/C in range(loc,4))
@@ -281,6 +283,8 @@ var/list/blob_overminds = list()
 			icon = 'icons/mob/blob/blob_AME.dmi'
 		if("AME_new")
 			icon = 'icons/mob/blob/blob_AME_64x64.dmi'
+		if("skelleton")
+			icon = 'icons/mob/blob/blob_skelleton_64x64.dmi'
 		//<----------------------------------------------------------------------------DEAR SPRITERS, THIS IS WHERE YOU ADD YOUR NEW BLOB DMIs
 		/*EXAMPLES
 		if("fleshy")
@@ -299,6 +303,7 @@ var/list/blob_looks_admin = list(//Options available to admins
 	"clownscape" = 32,
 	"AME" = 32,
 	"AME_new" = 64,
+	"skelleton" = 64,
 	)
 
 var/list/blob_looks_player = list(//Options available to players
@@ -320,18 +325,17 @@ var/list/blob_looks_player = list(//Options available to players
 	for(var/obj/effect/blob/B in orange(src,1))
 		B.update_icon()
 
-/obj/effect/blob/proc/Pulse(var/pulse = 0, var/origin_dir = 0)//Todo: Fix spaceblob expand
-	/*
-	if(time_since_last_pulse >= world.time)
-		return
-	*/
+/obj/effect/blob/proc/Pulse(var/pulse = 0, var/origin_dir = 0, var/mob/camera/blob/source = null)
+
 	time_since_last_pulse = world.time
 
 	//set background = 1
 
 	for(var/mob/M in loc)
-		M.blob_act()
-
+		M.blob_act(0,src)
+	for(var/obj/O in loc)
+		for(var/i in 1 to max(1,(4-pulse)))
+			O.blob_act(TRUE) //Hits up to 4 times if adjacent to a core
 	if(run_action())//If we can do something here then we dont need to pulse more
 		return
 
@@ -348,10 +352,10 @@ var/list/blob_looks_player = list(//Options available to players
 		var/turf/T = get_step(src, dirn)
 		var/obj/effect/blob/B = locate() in T
 		if(!B)
-			expand(T)//No blob here so try and expand
+			expand(T,TRUE,source)//No blob here so try and expand
 			return
 		spawn(2)
-			B.Pulse((pulse+1),get_dir(src.loc,T))
+			B.Pulse((pulse+1),get_dir(src.loc,T),source)
 		return
 	return
 
@@ -359,7 +363,7 @@ var/list/blob_looks_player = list(//Options available to players
 /obj/effect/blob/proc/run_action()
 	return 0
 
-/obj/effect/blob/proc/expand(var/turf/T = null, var/prob = 1)
+/obj/effect/blob/proc/expand(var/turf/T = null, var/prob = 1, var/mob/camera/blob/source)
 	if(prob && !prob(health))
 		return
 	if(istype(T, /turf/space) && prob(75))
@@ -394,22 +398,29 @@ var/list/blob_looks_player = list(//Options available to players
 				B.aftermove()
 				if(B.spawning > 1)
 					B.spawning = 1
+				if(istype(T,/turf/simulated/floor))
+					var/turf/simulated/floor/F = T
+					F.burn_tile()
 		else
 			B.forceMove(T)
-	else
-		T.blob_act()//If we cant move in hit the turf
+			if(istype(T,/turf/simulated/floor))
+				var/turf/simulated/floor/F = T
+				F.burn_tile()
+	else //If we cant move in hit the turf
+		if(!source || !source.restrain_blob)
+			T.blob_act(0,src) //Don't attack the turf if our source mind has that turned off.
 		B.manual_remove = 1
 		B.Delete()
 
 	for(var/atom/A in T)//Hit everything in the turf
-		A.blob_act()
+		A.blob_act(0,src)
 	return 1
 
 
-/obj/effect/blob/proc/change_to(var/type, var/mob/camera/blob/M = null)
+/obj/effect/blob/proc/change_to(var/type, var/mob/camera/blob/M = null, var/special = FALSE)
 	if(!ispath(type))
 		error("[type] is an invalid type for the blob.")
-	if("[type]" == "/obj/effect/blob/core")
+	if(special) //Send additional information to the New()
 		new type(src.loc, 200, null, 1, M, newlook = looks)
 	else
 		var/obj/effect/blob/B = new type(src.loc, newlook = looks)
