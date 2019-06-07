@@ -35,8 +35,8 @@
 		/obj/item/device/gps/engineering,
 		/obj/item/weapon/storage/belt/utility/chief,
 		/obj/item/clothing/glasses/scanner/material,
-		/obj/item/clothing/glasses/scanner/material(src),
-		/obj/item/clothing/accessory/storage/brown_vest(src),
+		/obj/item/clothing/glasses/scanner/material,
+		/obj/item/clothing/accessory/storage/brown_vest,
 		/obj/item/weapon/card/debit/preferred/department/engineering,
 	)
 

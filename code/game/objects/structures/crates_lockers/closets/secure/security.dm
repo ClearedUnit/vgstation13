@@ -137,11 +137,6 @@
 
 /obj/structure/closet/secure_closet/warden/atoms_to_spawn()
 	return list(
-		pick(
-			/obj/item/weapon/storage/backpack/security,
-			/obj/item/weapon/storage/backpack/satchel_sec,
-			/obj/item/weapon/storage/backpack/messenger/sec,
-			)
 		/obj/item/device/radio/headset/headset_sec,
 		/obj/item/clothing/glasses/sunglasses/sechud,
 		/obj/item/clothing/under/rank/warden,
@@ -244,9 +239,9 @@
 		/obj/item/device/handtv,
 		/obj/item/clothing/accessory/holster/handgun/wornout,
 		/obj/item/clothing/accessory/storage/black_vest,
-		/obj/item/ammo_storage/speedloader/c38(src),
-		/obj/item/ammo_storage/box/c38(src),
-		/obj/item/ammo_storage/box/c38(src),
+		/obj/item/ammo_storage/speedloader/c38,
+		/obj/item/ammo_storage/box/c38,
+		/obj/item/ammo_storage/box/c38,
 		/obj/item/weapon/gun/projectile/detective,
 		/obj/item/weapon/storage/box/large/detectivegear,
 	)
